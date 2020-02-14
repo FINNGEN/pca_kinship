@@ -1,2 +1,2 @@
 # pca_kinship
-PCA &amp; Kinship pipeline
+PCA and Kinship pipeline
