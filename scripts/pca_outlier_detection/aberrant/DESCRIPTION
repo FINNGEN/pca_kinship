@@ -1,0 +1,12 @@
+Package: aberrant
+Type: Package
+Title: A robust clustering algorithm for outlier identification
+Version: 1.0
+Depends: R (>= 2.13.0), MCMCpack, mvtnorm, ellipse
+Date: 2011-10-12
+Author: Celine Bellenguez and Chris CA Spencer
+Maintainer: Chris CA Spencer <chris.spencer@well.ox.ac.uk>
+Description: High-throughput genotyping arrays provide an efficient way to survey single nucleotide polymorphisms (SNPs) across the genome in large numbers of individuals. Downstream analysis of the data, for example in genome-wide association studies (GWAS), often involves statistical models of genotype frequencies across individuals. The complexities of the sample collection process and the potential for errors in the experimental assay can lead to biases and artefacts in an individual's inferred genotypes. Rather than attempting to model these complications, it has become standard practice to remove individuals whose genome-wide data differs from the sample at large. This package contains a simple, but robust, clustering algorithm to identify samples with atypical summaries of genome-wide variation. 
+License: GPL (>= 2)
+LazyLoad: yes
+Packaged: 2011-10-13 09:01:00 UTC; celine
