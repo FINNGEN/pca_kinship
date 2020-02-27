@@ -1,9 +1,10 @@
 from utils import pretty_print,file_exists,make_sure_path_exists
 import multiprocessing,glob,argparse,os.path,subprocess,shlex
-from pca import batches,tg,kinship,true_finns
+from pca import batches,tg,kinship,true_finns,pca,plot
 
 def main(args):
 
+    
     # Get batch info
     pretty_print("BATCHES & SAMPLES")
     args.plink_path = os.path.join(args.out_path,'plink_files/') 
@@ -15,7 +16,6 @@ def main(args):
     tg.subset_1k(args)
     tg.merge_1k(args)
 
-
     # PCA for outliers
     pretty_print('TRUE FINNS') 
     args.pca_outlier_path = os.path.join(args.out_path, 'outliers_pca/')
@@ -24,11 +24,30 @@ def main(args):
     true_finns.outlier_pca(args)
     true_finns.finn_or_not(args)
 
-    
+    #KINSHIP DATA
     pretty_print('KINSHIP')
     args.kinPath = os.path.join(args.out_path,'kinship/')
     make_sure_path_exists(args.kinPath)
     kinship.kinship(args)
+
+    #RUN PCA
+    pretty_print('PCA')
+    args.pca_path = os.path.join(args.out_path,'pca/')
+    make_sure_path_exists(args.pca_path)
+    pca.build_inliers(args)
+    pca.fast_pca_inliers(args)
+    pca.project_all(args)  
+
+    #PLOT
+    if args.plot:
+        pretty_print('PLOTTING')      
+        args.plot_path = os.path.join(args.out_path,'plots')
+        make_sure_path_exists(args.plot_path)
+        plot.plot_final_pca(args)
+        plot.plot_first_round_outliers(args)
+        plot.plot_fin_eur_outliers(args)
+
+    return True
 
 
 if __name__=='__main__':
@@ -61,18 +80,17 @@ if __name__=='__main__':
     parser.add_argument('--plot',action = 'store_true',help = 'Flag for plotting')
     parser.add_argument("--cpus",type = int, help = "number of cpus to use", default =  multiprocessing.cpu_count())
     parser.add_argument('--force',action = 'store_true',help = 'Replaces files by force',default = False)
+    parser.add_argument('--release',action = 'store_true',help = 'Flag for data release',default = False)
     parser.add_argument('-v', '--verbosity', action="count", 
                         help="increase output verbosity (e.g., -vv is more than -v)")
  
     args=parser.parse_args()
-
+    args.name = args.name
     # creating outputpath
     make_sure_path_exists(args.out_path)
 
     # write log file
-    args.results_path = os.path.join(args.out_path,'results/')
-    make_sure_path_exists(args.results_path)
-    log_file =os.path.join(args.results_path ,args.name + '.log' )
+    log_file =os.path.join(args.out_path ,args.name + '.log' )
     with open(log_file,'wt') as o:
         d = vars(args)
         for key in d:
@@ -92,10 +110,9 @@ if __name__=='__main__':
 
     args.v_print = _v_print
          
-    
     args.success = False
-    main(args)
-    if args.success:
+    success = main(args)
+    if success:
         print('Pipeline ran successfully, logging...')
         args.force = False
         import contextlib

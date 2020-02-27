@@ -33,4 +33,4 @@ RUN wget http://people.virginia.edu/~wc9c/KING/Linux-king.tar.gz && tar -xzvf Li
 
 
 ADD scripts ../scripts
-
+ADD data ../data

@@ -4,17 +4,20 @@ import numpy as np
 from utils import mapcount,write_fam_samplelist,identify_separator,tmp_bash,mem_mib
 
 def batches(args):
-# build batch data frame
+    '''
+    Creates batch metadata and, if needed, a new plink file with a subset of samples.
+    '''
 
     #FILTER METADATA
     new_sample = os.path.join(args.misc_path,'sample_info.csv')
-    if not os.path.isfile(new_sample) or args.force:
+    if not os.path.isfile(new_sample) or mapcount(new_sample) < 1 or args.force:
         args.force = True
-
-        #subset sample info file to only shared samples with fam file
-        sample_info = pd.read_csv(args.sample_info,sep = identify_separator(args.sample_info),usecols = ['BATCH','COHORT','FINNGENID']).rename(columns={"FINNGENID": "IID" })
-        sample_info.to_csv(new_sample,index = False)
-        print(sample_info.head())      
+        #save metadata to custom format
+        sample_info = pd.read_csv(args.sample_info,sep = identify_separator(args.sample_info),usecols = ['BATCH','RELEASE','COHORT','FINNGENID']).rename(columns={"FINNGENID": "IID" })
+        axiom_mask =(sample_info['COHORT'] == 'Other') & sample_info['BATCH'].str.contains('Axiom')
+        sample_info.loc[axiom_mask,'COHORT'] = sample_info.loc[axiom_mask,'RELEASE']
+        sample_info.loc[:,('BATCH','COHORT','IID')].to_csv(new_sample,index = False)
+        args.v_print(1,sample_info.head())      
 
     args.sample_info = new_sample
     sample_info = pd.read_csv(args.sample_info,sep = identify_separator(args.sample_info))

@@ -57,7 +57,7 @@ def finn_or_not(args):
     if not os.path.isfile(pca_output_file+ '.eigenval') or args.force:
         print('Calculating finngen pca...')
         args.force = True
-        cmd = f'plink2 --bfile {args.tg_merged_plink_file}  --keep {finngen}  --read-freq {args.tg_merged_plink_file + ".frq"} --pca {args.pca_components}  approx biallelic-var-wts --threads {args.cpus} -out {pca_output_file}'
+        cmd = f'plink2 --bfile {args.merged_plink_file}  --keep {finngen}  --read-freq {args.merged_plink_file}.afreq --pca {args.pca_components}  approx biallelic-var-wts --threads {args.cpus} -out {pca_output_file}'
         subprocess.call(shlex.split(cmd))       
           
     else:
@@ -124,7 +124,7 @@ def pca_round(args,tag,remove_list = None):
     make_sure_path_exists(local_path)
     remove = ''
     if remove_list is not None:
-        remove_file = tmpPath + tag + '_remove.fam'
+        remove_file = args.misc_path + tag + '_remove.fam'
         write_fam_samplelist(remove_file,remove_list)
         remove =  f' --remove {remove_file}'
 
@@ -136,7 +136,7 @@ def pca_round(args,tag,remove_list = None):
         args.force = True 
         #individuals that need to be removed
         print(remove)
-        cmd = f'plink2 --bfile {args.tg_merged_plink_file} --read-freq  {args.tg_merged_plink_file}.frq {remove} --pca {args.pca_components} approx biallelic-var-wts --threads {args.cpus}  -out {pca_output_file}'
+        cmd = f'plink2 --bfile {args.merged_plink_file} --read-freq  {args.merged_plink_file}.afreq {remove} --pca {args.pca_components} approx biallelic-var-wts --threads {args.cpus}  -out {pca_output_file}'
         print(cmd)
         subprocess.call(shlex.split(cmd))
         
@@ -257,7 +257,7 @@ def project(args,tag,samples_keep,columns,pca_output_file):
         args.force = True 
         print(tag)
         keep = f' --keep {samples_keep}'
-        cmd = f'plink2 --bfile {args.tg_merged_plink_file} {keep} --score {pca_output_file+".eigenvec.var"} 2 3 header-read no-mean-imputation  --score-col-nums {columns[0]}-{columns[-1]} --out {args.eur_outlier_path+tag}'
+        cmd = f'plink2 --bfile {args.merged_plink_file} {keep} --score {pca_output_file+".eigenvec.var"} 2 3 header-read no-mean-imputation  --score-col-nums {columns[0]}-{columns[-1]} --out {args.eur_outlier_path+tag}'
         subprocess.call(shlex.split(cmd))
         cmd = f'cat {args.eur_outlier_path+tag + ".sscore"}  | cut -f2,{cut_columns} >  {args.eur_outlier_path+ tag + ".eigenvec"}'
         tmp_bash(cmd)

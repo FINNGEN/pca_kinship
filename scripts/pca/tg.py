@@ -10,12 +10,16 @@ def merge_1k(args):
     '''
     Merge finngen plink with tg plink so I can run kinship.
     '''
-    args.tg_merged_plink_file = args.plink_path + '1k_' + args.name
-    if not os.path.isfile(args.tg_merged_plink_file +'.bed') or args.force:
+    args.merged_plink_file = args.plink_path + '1k_' + args.name
+    if not os.path.isfile(args.merged_plink_file +'.bed') or args.force:
         args.force = True
-        cmd = f'plink --bfile {args.bed.replace(".bed","")} --bmerge {args.new_tg}  --freq --memory {int(mem_mib)} --make-bed --out {args.tg_merged_plink_file} '
-        print(cmd)
+        cmd = f'plink --bfile {args.bed.replace(".bed","")} --bmerge {args.new_tg}  --memory {int(mem_mib)} --make-bed --out {args.merged_plink_file} '
+        args.v_print(3,cmd)
         subprocess.call(shlex.split(cmd))
+        cmd = f'plink2 --bfile {args.merged_plink_file}   --memory {int(mem_mib)} --freq --out {args.merged_plink_file} '
+        args.v_print(3,cmd)
+        subprocess.call(shlex.split(cmd))
+
     else:
         args.v_print(3,'thousand genomes/finngen shared plink file already generated.')
 
