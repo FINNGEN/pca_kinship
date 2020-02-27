@@ -2,8 +2,9 @@ workflow pca_kinship {
 
     String prefix
     String docker
-    Array[String] chrom_list 
-
+    
+    Array[String] chrom_list =  ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22"]
+    
     call prune_panel {
         input:
         docker = docker,
@@ -119,7 +120,7 @@ task kinship{
     String? final_docker  = if defined(kinship_docker) then kinship_docker else docker
     String prefix
 
-    Int disk_size = ceil(size(bed_file,'GB'))*6 + 10
+    Int disk_size = ceil(size(bed_file,'GB'))*4 + 20
     Int mem = ceil(size(bed_file,'GB')) + 10
     Int cpus = if defined(sub_fam) then 16 else 64
 
@@ -215,7 +216,6 @@ task prune_panel {
     String pargs
     String ld_params
     String target_snps
-    String step
     
     File bed_file = plink_path + ".bed"
     File bim_file = plink_path + ".bim"
@@ -230,7 +230,6 @@ task prune_panel {
         --info ${info_score} ${info_filter} \
         --prefix ${prefix} \
         --ld ${ld_params} \
-        --step ${step} \
         --target-snps ${target_snps} \
         --pargs ${pargs} \
         -o "/cromwell_root/" \ 
@@ -263,14 +262,13 @@ task merge_plink {
     String name
     String pargs
     Int total_size
-    Int disk_factor
     Int mem
     
     String? merge_docker
     String docker
     String? final_docker = if defined(merge_docker) then merge_docker else docker
     
-    Int disk_size = total_size*disk_factor + 20
+    Int disk_size = total_size*4 + 20
     Int plink_mem = mem*1000 - 2000
 
     command <<<
@@ -301,7 +299,6 @@ task chrom_convert {
 
     String chrom
     String pargs
-    Int disk_factor
     Int mem
     Int cpu
 
@@ -313,9 +310,8 @@ task chrom_convert {
     # get path to vcf
     String chromPath
     File cFile = sub(chromPath,"CHROM",chrom)
-    Int chrom_size = ceil(size(cFile,"GB"))   
-    
-    Int disk_size = disk_factor * chrom_size + 20
+    Int chrom_size = ceil(size(cFile,"GB")) 
+    Int disk_size = chrom_size*4  + 20
     Int plink_mem = mem*1000 - 2000
 
     

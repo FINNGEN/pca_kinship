@@ -74,7 +74,7 @@ def project_all(args):
 
     # deinfe projection command
     cmd_start =f'plink2 --bfile {args.merged_plink_file} --threads {args.cpus} --memory {int(mem_mib)}'
-    cmd_args = f' --read-freq {args.merged_plink_file  +".afreq"} --score {args.pca_output_file+".eigenvec.var"} 2 3 header-read no-mean-imputation variance-standardize --score-col-nums 5-{3+args.pca_components+1} --out  {args.pca_path + args.name}'
+    cmd_args = f' --read-freq {args.merged_plink_file}.afreq --score {args.pca_output_file+".eigenvec.var"} 2 3 header-read no-mean-imputation variance-standardize --score-col-nums 5-{3+args.pca_components+1} --out  {args.pca_path + args.name}'
 
     #define projection outputs
     outliers_pca_file = os.path.join(args.pca_path,args.name+ '_outliers_proj.sscore')

@@ -83,12 +83,13 @@ if __name__ == "__main__":
     # optional args
     parser.add_argument('--pargs',type = str,help='extra plink args',default = '')
     parser.add_argument('--force',help='Flag on whether to force run',action = "store_true")
-    parser.add_argument('--step',help="step by which to decrease the r2",type = float,default = 0.1)
     parser.add_argument('--target-snps',type = int,nargs = 2,help = "Target number of snps after ld",default = [100000,150000])
-    parser.add_argument('--ld',nargs=3,metavar = ('SIZE','STEP','THRESHOLD'),help ='size,step,threshold',default = [1000,200,0.7])
+    parser.add_argument('--ld',nargs=4,metavar = ('SIZE','STEP','THRESHOLD','STEP2'),help ='size,step,threshold',default = [1000,200,0.7,0.05])
     args = parser.parse_args()
     make_sure_path_exists(args.out_path)
-
+    args.step = args.ld[-1]
+    args.ld = args.ld[:-1]
+    
     
     args.variants_path = os.path.join(args.out_path,'variants')
     make_sure_path_exists(args.variants_path)
