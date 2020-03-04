@@ -193,7 +193,7 @@ def build_superpop(args):
         with open(args.annot_pop,'wt') as o:
             o.write('IID' +'\t' + 'SuperPops\n')
             #write sample to superpop/batch mapping for 1k samples
-            tg_sample_iterator = basic_iterator(args.new_tg +'.fam',columns = 1,separator = " ")
+            tg_sample_iterator = basic_iterator(args.tg_bed.replace('.bed','.fam'),columns = 1,separator = " ")
             for sample in tg_sample_iterator:
                 pop = pop_dict[sample] # fetch country
                 super_pop = pop if pop =='FIN'else superpop_dict[pop]

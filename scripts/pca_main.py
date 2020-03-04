@@ -1,7 +1,6 @@
 from utils import pretty_print,file_exists,make_sure_path_exists
 import multiprocessing,glob,argparse,os.path,subprocess,shlex
-from pca import batches,tg,kinship,true_finns,pca,plot
-
+from pca import batches,tg,kinship,pca,plot,true_finns
 def main(args):
 
     
@@ -13,7 +12,6 @@ def main(args):
 
     #downloads 1k genome project and builds a plink file that can be merged
     pretty_print('1k GENOME')
-    tg.subset_1k(args)
     tg.merge_1k(args)
 
     # PCA for outliers
@@ -46,7 +44,7 @@ def main(args):
         plot.plot_final_pca(args)
         plot.plot_first_round_outliers(args)
         plot.plot_fin_eur_outliers(args)
-
+        plot.plot_map(args)
     return True
 
 
@@ -58,6 +56,7 @@ if __name__=='__main__':
     parser.add_argument('-o',"--out_path",type = str, help = "folder in which to save the results", required = True)
     parser.add_argument('--name',type = str,default = 'test',help = 'Name to append to output files ')
     parser.add_argument('-s',"--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
+    parser.add_argument('-c',"--cov", type=file_exists, help =  "Path to file with regionofbirth info", required = False)
 
     #KINSHIP
     parser.add_argument('--degree',type=int,help='Degree for Kinship',default = 2)
@@ -65,6 +64,7 @@ if __name__=='__main__':
 
     #PCA
     parser.add_argument('--pca-components',type=int,help='Components needed for pca',default = 20)
+    parser.add_argument('-p',"--panel", type=file_exists, help = "File with degree 3 kinship")
 
     #1k
     parser.add_argument('--tg-bed',type = file_exists,help = 'Plink 1k file')
@@ -94,7 +94,7 @@ if __name__=='__main__':
     with open(log_file,'wt') as o:
         d = vars(args)
         for key in d:
-            o.write(f'{key}:{d[key]} \n')   
+            o.write(f"{key}:{d[key]} \n")   
     
     args.rootPath = '/'.join(os.path.realpath(__file__).split('/')[:-2]) + '/'
     args.data_path = os.path.join(args.rootPath,'data/')

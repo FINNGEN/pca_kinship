@@ -42,7 +42,7 @@ def ld_pruning(args):
         return
     else:
         # if number of SNPS is too high, iteratively ldprune lowering the threshold and using the previous pruned variants as the starting set
-        args.ld[-1] = round(float(args.ld[-1]) - args.step,trailing_zeros(args.step))
+        args.ld[-1] = round(args.ld[-1] - args.step,trailing_zeros(args.step))
         while not (args.target_snps[0] < mapcount(pruned_variants) < args.target_snps[1]) and float(args.ld[-1]) >= args.step:           
             args.force = True
             args.snplist = pruned_variants
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     parser.add_argument('--pargs',type = str,help='extra plink args',default = '')
     parser.add_argument('--force',help='Flag on whether to force run',action = "store_true")
     parser.add_argument('--target-snps',type = int,nargs = 2,help = "Target number of snps after ld",default = [100000,150000])
-    parser.add_argument('--ld',nargs=4,metavar = ('SIZE','STEP','THRESHOLD','STEP2'),help ='size,step,threshold',default = [1000,200,0.7,0.05])
+    parser.add_argument('--ld',nargs=4,type = float,metavar = ('SIZE','STEP','THRESHOLD','STEP2'),help ='size,step,threshold',default = [1000,200,0.7,0.05])
     args = parser.parse_args()
     make_sure_path_exists(args.out_path)
     args.step = args.ld[-1]
@@ -94,5 +94,4 @@ if __name__ == "__main__":
     args.variants_path = os.path.join(args.out_path,'variants')
     make_sure_path_exists(args.variants_path)
     args.out_root = os.path.join(args.variants_path,args.prefix )
-
     main(args)

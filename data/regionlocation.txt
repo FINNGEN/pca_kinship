@@ -1,0 +1,20 @@
+region,capital,latitude,longitude
+Aland,Mariehamn,60.0971,19.9348
+Central Finland,Jyvaskyla,62.2393,25.745951
+Central Ostrobothnia,Kokkola,63.836583,23.133625
+Etelä-Savo,Mikkeli,61.687796,27.272657
+Kainuu,Kajaani,64.224087,27.733423
+Kanta-Häme,Hameenlinna,60.981091,24.458264
+Kymenlaakso,Kotka,60.467423,26.945084
+Lapland,Rovaniemi,66.497621,25.71921
+North Karelia,Joensuu,62.600816,29.760536
+North Ostrobothnia,Oulu,65.011873,25.471681
+Ostrobothnia,Vaasa,63.081821,21.479812
+Pirkanmaa,Tampere,61.498021,23.760312
+Pohjois-Savo,Kuopio,62.824142,27.594561
+Päijät-Häme,Lahti,60.983876,25.656181
+Satakunta,Pori,61.486724,21.791002
+South Karelia,Lappeenranta,61.058242,28.18753
+South Ostrobothnia,Seinajoki,62.79541,22.844202
+Uusimaa,Helsinki,60.167409,24.942568
+Varsinais-Suomi,Turku,60.451753,22.267052

@@ -14,8 +14,10 @@ def batches(args):
         args.force = True
         #save metadata to custom format
         sample_info = pd.read_csv(args.sample_info,sep = identify_separator(args.sample_info),usecols = ['BATCH','RELEASE','COHORT','FINNGENID']).rename(columns={"FINNGENID": "IID" })
+        # for axiomi batches, replease release as cohort
         axiom_mask =(sample_info['COHORT'] == 'Other') & sample_info['BATCH'].str.contains('Axiom')
         sample_info.loc[axiom_mask,'COHORT'] = sample_info.loc[axiom_mask,'RELEASE']
+        
         sample_info.loc[:,('BATCH','COHORT','IID')].to_csv(new_sample,index = False)
         args.v_print(1,sample_info.head())      
 

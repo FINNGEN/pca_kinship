@@ -8,10 +8,93 @@ sns.set(palette='Set2')
 import matplotlib.ticker as ticker
 import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
-import os
+import os,unidecode
 from itertools import combinations
 from pca.color_dict import color_dict
-from utils import make_sure_path_exists,identify_separator
+from utils import make_sure_path_exists,identify_separator,return_header,basic_iterator
+from collections import Counter
+
+import conda
+conda_file_dir = conda.__file__
+conda_dir = conda_file_dir.split('lib')[0]
+proj_lib = os.path.join(os.path.join(conda_dir, 'share'), 'proj')
+os.environ["PROJ_LIB"] = proj_lib
+from mpl_toolkits.basemap import Basemap
+
+#########################
+#--PLOTTING REGION PCA--#
+#########################
+
+def get_loc_df(args):
+
+    with open(os.path.join(args.data_path,'regionlocation.txt')) as i: data = [elem.strip() for elem in i.readlines()[1:]]
+    #data = [elem.strip() for elem in data[1:]]
+    a = {}
+    for entry in data:
+        region,_,*coord = entry.split(',')
+        a[region] = list(map(float,coord))
+    loc_df = pd.DataFrame.from_dict(a,orient='index',columns=['lat','lon'])
+    loc_df.index.names = ['regionofbirth']
+    return loc_df
+
+def plot_map(args,pc_list = [1,2,3]):
+
+    save_path = os.path.join(args.plot_path, args.name + f"_pc_map.pdf")
+    if not args.cov or os.path.isfile(save_path):
+        return
+    
+  
+    region_plot_data = os.path.join(args.plot_path,'plot_data')    
+
+    pc_avg = os.path.join(args.plot_path,'plot_data','pc_averages.csv')
+    if not os.path.isfile(pc_avg):
+
+        # read region of births from samples and get counter
+        birth_df = pd.read_csv(args.cov,sep = identify_separator(args.cov), index_col='FINNGENID')[['regionofbirthname']]
+        count_df = birth_df['regionofbirthname'].value_counts().to_frame('count')
+        count_df.index.names = ['regionofbirth']
+
+        # return valid regions
+        loc_df = get_loc_df(args)
+        print(loc_df)
+        
+        usecols = ['PC' + str(pc) for pc in pc_list]
+        eigenvec = pd.read_csv(args.eigenvec, sep = '\t',index_col = 'IID')[usecols]
+        eigenvec.index.names = ['FINNGENID']
+        print(eigenvec.head())
+        print(birth_df.head())
+        tmp_avg = pd.concat([birth_df,eigenvec],join = 'inner',axis = 1).set_index('regionofbirthname').groupby('regionofbirthname').mean()
+        print(tmp_avg.head())
+        region_avg = pd.concat([loc_df,tmp_avg,count_df],join = 'inner',axis = 1)
+        region_avg.index.names = ['regionofbirth']
+        print(region_avg)
+        
+        region_avg.to_csv(pc_avg,index=True)
+        print(region_avg.shape)
+    df = pd.read_csv(pc_avg,index_col = 0)
+    print(df)
+
+    resize = 100/max(df['count'].values)
+    m = Basemap(projection='lcc', resolution= 'l', lat_0=np.average(df['lat']), lon_0=np.average(df['lon']), width=1E6, height=1.2E6)
+    fig = plt.figure()
+    gs = mpl.gridspec.GridSpec(1,len(pc_list))
+    for i,pc in enumerate(list(map(str,pc_list))):
+        ax = fig.add_subplot(gs[0,i])
+        m.scatter(df['lon'].values,df['lat'].values, latlon=True,s=df['count'].values*resize,c=df['PC' + str(pc)].values,cmap='seismic', alpha=0.8, edgecolors = 'k', linewidth = .5,zorder= 10)
+
+        #make legend with dummy points
+        line1=[]
+        popList =[100, 1000, 10000]
+        for a in popList:
+            locLine= plt.scatter([], [], c='k', alpha=0.5, s= a*resize, label=str(a) + ' samples')
+            line1.append(locLine)
+        legend1 = plt.legend(line1,[str(a)+ ' samples' for a in popList],loc = 'lower right',fontsize = 4)
+
+        m.shadedrelief()
+        m.drawcoastlines(color='gray',linewidth = 0.3)
+        m.drawcountries(color='gray')
+    fig.savefig(save_path, bbox_inches = 'tight', pad_inches = 0)
+    
 
 
 ########################
@@ -45,7 +128,8 @@ def plot_final_pca(args):
         
 def return_cohorts_df(args):
     """
-    Returns a pandas df where the cohort info is in a column
+    Returns a pandas df where the cohort info is in a column.
+    N.B. the eigenvec dataframe and the batches dataframe are merged on IID, so if the samples is missing in the batches metadata, it will not be plotted.
     """
 
     out_file = os.path.join(args.plot_path,'plot_data',"pc_cohorts.csv")

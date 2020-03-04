@@ -7,9 +7,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update && apt-get install mercurial --yes && \
 apt-get install gcc zlib1g-dev wget make libcurl4-openssl-dev libbz2-dev liblzma-dev \
-bzip2 curl unzip gawk python python3 make gcc g++ libz-dev libbz2-dev liblzma-dev  littler libssl-dev python3-numpy python3-pandas python3-pip software-properties-common ghostscript --yes &&\
-pip3 install networkx seaborn && pip3 install numpy --upgrade
-
+bzip2 curl unzip gawk python make gcc g++ libz-dev libbz2-dev liblzma-dev  littler libssl-dev  software-properties-common ghostscript --yes 
 
 RUN apt-get remove r-base-core --yes
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 
@@ -19,8 +17,20 @@ RUN apt install r-base --yes
 ADD ./docker/install_packages.R /usr/local/bin/
 RUN chmod a+x /usr/local/bin/install_packages.R && install_packages.R
 
+
+RUN wget --quiet https://repo.anaconda.com/archive/Anaconda3-2019.10-Linux-x86_64.sh -O ~/anaconda.sh && \
+    /bin/bash ~/anaconda.sh -b -p /opt/conda && \
+    rm ~/anaconda.sh
+    
+RUN  ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate base" >> ~/.bashrc && \
+    find /opt/conda/ -follow -type f -name '*.a' -delete  && \
+    find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
+    /opt/conda/bin/conda clean -afy
+
 ADD ./docker/requirements.txt .
-RUN pip3 install -r requirements.txt && rm requirements.txt
+RUN /opt/conda/bin/conda install --file requirements.txt --yes
 
 #PLINK 1.9
 RUN wget http://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_latest.zip && unzip plink_* -d /usr/local/bin && rm plink*zip
