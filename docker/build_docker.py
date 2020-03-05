@@ -22,7 +22,8 @@ if __name__ == "__main__":
     call(shlex.split(cmd))
 
     if args.push:
-        cmd = 'gcloud docker -- push eu.gcr.io/finngen-refinery-dev/' + args.image +':' + args.version
+        cmd = ' docker -- push eu.gcr.io/finngen-refinery-dev/' + args.image +':' + args.version
+        print(cmd)
         call(shlex.split(cmd))
 
        

@@ -80,16 +80,17 @@ task pca {
     # sample metadata
     File sample_file
     File kin_file
+    File metadata
     String prefix
     # runtime data
     String docker
-    String? pca_docker
-    String? final_docker  = if defined(pca_docker) then pca_docker else docker
+    String pca_docker
+    String final_docker  = if pca_docker != "" then pca_docker else docker
     Int disk_size = ceil(size(bed_file,'GB'))*6 + ceil(size(tg_bed,'GB')) + 10
     Int mem = ceil(size(bed_file,'GB')) + 10
     
     command {
-        python3 /scripts/pca_main.py --bed ${bed_file} --tg-bed ${tg_bed}  -k ${kin_file}  -s ${sample_file}  --name ${prefix}  -o .
+        python3 /scripts/pca_main.py --bed ${bed_file} --tg-bed ${tg_bed}  -k ${kin_file}  -s ${sample_file}  --name ${prefix} --release   --meta ${metadata} --release --plot -o .
     }
     
     runtime {
@@ -101,7 +102,15 @@ task pca {
 	preemptible: 0
     }
     output {
-        Array[File] out = glob('/cromwell_root/plots/*pdf')
+        Array[File] log = glob('/cromwell_root/documentation/${prefix}.log')
+        Array[File] cohort_plot = glob('/cromwell_root/documentation/${prefix}_cohorts_plots.pdf')
+        Array[File] ethnic_plot = glob('/cromwell_root/documentation/${prefix}_ethnic_outliers.pdf')
+        Array[File] ethnic_plot_2d = glob('/cromwell_root/documentation/${prefix}_ethnic_outliers_pairwise.pdf')
+        Array[File] eur_plot = glob('/cromwell_root/documentation/${prefix}_eur_outliers.pdf')
+        Array[File] eur_plot_2d = glob('/cromwell_root/documentation/${prefix}_eur_outliers_pairwise.pdf')
+        Array[File] pca_plot = glob('/cromwell_root/documentation/${prefix}_final_pca.pdf')
+        Array[File] pca_plot_2d = glob('/cromwell_root/documentation/${prefix}_final_pca_pairwise.pdf')
+        Array[File] geo_plot = glob('/cromwell_root/documentation/${prefix}_pc_map.pdf')
         }
 
 }
@@ -113,22 +122,21 @@ task kinship{
     File fam_file
     File freq_file
     File pheno_file
-    File? sub_fam
+    File sub_fam
 
     String docker
-    String? kinship_docker
-    String? final_docker  = if defined(kinship_docker) then kinship_docker else docker
+    String kinship_docker
+    String final_docker  = if kinship_docker != "" then kinship_docker else docker
     String prefix
 
     Int disk_size = ceil(size(bed_file,'GB'))*4 + 20
     Int mem = ceil(size(bed_file,'GB')) + 10
-    Int cpus = if defined(sub_fam) then 16 else 64
 
     String out_path = '/cromwell_root/'
     command {
         python3  /scripts/ped.py \
         --bed ${bed_file} \
-        ${'--fam '  + sub_fam} \
+        '--fam '  ${sub_fam} \
         -o ${out_path} \
         --prefix ${prefix} \
         --pheno-file ${pheno_file} \
@@ -137,7 +145,7 @@ task kinship{
     
     runtime {
         docker: "${final_docker}"
-        cpu: "${cpus}"
+        cpus: 64
         disks: "local-disk " + "${disk_size}" + " HDD"
         bootDiskSizeGb: 20
         memory: "${mem} GB"
@@ -204,8 +212,8 @@ task filter_tg {
 task prune_panel {
 
     String docker
-    String? prune_docker
-    String? final_docker =  if defined(prune_docker) then prune_docker else docker
+    String prune_docker
+    String final_docker =  if prune_docker != ""  then prune_docker else docker
     String prefix
 
     File info_score
@@ -264,9 +272,9 @@ task merge_plink {
     Int total_size
     Int mem
     
-    String? merge_docker
+    String merge_docker
     String docker
-    String? final_docker = if defined(merge_docker) then merge_docker else docker
+    String final_docker = if merge_docker != ""  then merge_docker else docker
     
     Int disk_size = total_size*4 + 20
     Int plink_mem = mem*1000 - 2000
@@ -303,8 +311,8 @@ task chrom_convert {
     Int cpu
 
     String docker
-    String? convert_docker
-    String? final_docker = if defined(convert_docker) then convert_docker else docker
+    String convert_docker
+    String final_docker = if convert_docker != "" then convert_docker else docker
 
     File variants
     # get path to vcf

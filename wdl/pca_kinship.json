@@ -1,19 +1,19 @@
 {
 
 # WORKFLOW INPUTS
-    "pca_kinship.prefix": "finngen_R5_test",
+    "pca_kinship.prefix": "finngen_R5",
    
 # PRUNE INPUTS
     "pca_kinship.prune_panel.plink_path": "gs://finngen-imputation-panel/sisu3/wgs_all",
     "pca_kinship.prune_panel.info_score": "gs://r5_data/variants/R5_info_values.txt.gz",
     "pca_kinship.prune_panel.info_filter": 0.95,
     "pca_kinship.prune_panel.cpus": 16,
-    "pca_kinship.prune_panel.ld_params": "1000 200 0.5 0.05",
-    "pca_kinship.prune_panel.pargs": " ' --snps-only --chr 1-22 --max-alleles 2 --maf' ",
+    "pca_kinship.prune_panel.ld_params": "50 5 0.9 0.05",
+    "pca_kinship.prune_panel.pargs": " ' --snps-only --chr 1-22 --max-alleles 2 ' ",
     "pca_kinship.prune_panel.target_snps": "70000 100000",
     
 # CONVERT INPUTS
-    "pca_kinship.chrom_convert.pargs":  "  --allow-extra-chr --double-id  ",
+    "pca_kinship.chrom_convert.pargs":  "  --allow-extra-chr --double-id  --maf ",
     "pca_kinship.chrom_convert.cpu": 32,
     "pca_kinship.chrom_convert.mem": 32,
     "pca_kinship.chrom_convert.convert_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-convert", 
@@ -25,17 +25,31 @@
     
 # KINSHIP INPUTS
     "pca_kinship.kinship.pheno_file": "gs://r5_data/pheno/R5_COV_PHENO_V0.txt.gz",
-    #"pca_kinship.kinship.sub_fam": "gs://r5_data/pedigree/test_king.fam",
+    "pca_kinship.kinship.sub_fam": "gs://r5_data/pedigree/test_king.fam",
+    
 #FILTER_TG INPUTS
     "pca_kinship.filter_tg.tg_root": "gs://thousand_genome/1kg",  
 
 # PCA INPUTS
-    "pca_kinship.pca.sample_file": "gs://r5_data/kinship/fgfactory_pass_samples_R4.txt",
+    "pca_kinship.pca.sample_file": "gs://r5_data/pedigree/fgfactory_pass_samples_R5.txt",
+    "pca_kinship.pca.metadata" : "gs://r5_data/pheno/finngen_R5_v2_minimum",
     
 #DOCKERS
     "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test",
+    
+    #prune
     #"pca_kinship.prune_panel.prune_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-prune",
+    "pca_kinship.prune_panel.prune_docker": "",
+    
+    # PLINK
     #"pca_kinship.merge_plink.merge_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-convert",
+    "pca_kinship.merge_plink.merge_docker": "",
+    
+    # KINSHIP
     #"pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-kinship",
+    "pca_kinship.kinship.kinship_docker": "",
+    
+    #PCA
     #"pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-pca",
+    "pca_kinship.pca.pca_docker": "",
 }

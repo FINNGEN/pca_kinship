@@ -13,12 +13,12 @@ def kinship(args):
     '''
   
     # CALCULATE KINSHIP WITHIN DEGREE 3 if file is not passed
-    if not args.kin_file:
-        args.kin_file = args.kinPath + args.name +'.kin0'
-        if not os.path.isfile(args.kin_file) or args.force:
+    if not args.kin:
+        args.kin = args.kinPath + args.name +'.kin0'
+        if not os.path.isfile(args.kin) or args.force:
             download_king()
-            print('generating kinship relations file to ',args.kin_file)
-            cmd = f'king -b {args.bed}  --kinship --degree 3 --cpus {args.cpus} --prefix {args.kin_file.split(".kin0")[0]}'
+            print('generating kinship relations file to ',args.kin)
+            cmd = f'king -b {args.bed}  --kinship --degree 3 --cpus {args.cpus} --prefix {args.kin.split(".kin0")[0]}'
             subprocess.call(shlex.split(cmd))
         
     else:
@@ -32,8 +32,8 @@ def kinship(args):
         args.force = True
         print('Generating degree ' + str(args.degree) + ' related couples ... ')
         
-        columns = [return_header(args.kin_file).index(elem) for elem in ['ID1','ID2','Kinship']]
-        iterator = basic_iterator(args.kin_file,columns = columns,skiprows=1)
+        columns = [return_header(args.kin).index(elem) for elem in ['ID1','ID2','Kinship']]
+        iterator = basic_iterator(args.kin,columns = columns,skiprows=1)
         
         duplicates = []
         deg_dict = dd(lambda : 3)
@@ -106,7 +106,7 @@ def kinship(args):
         to_be_removed = min(related_greedy,related_nodes)             
         write_fam_samplelist(args.related_individuals,to_be_removed)
     else:
-        print('list of related samples already generated.')
+        args.v_print(1,'list of related samples already generated.')
         
     print(f'degree {args.degree} related individuals : {mapcount(args.related_individuals)}')
     

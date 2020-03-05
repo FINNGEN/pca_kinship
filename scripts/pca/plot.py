@@ -40,7 +40,7 @@ def get_loc_df(args):
 def plot_map(args,pc_list = [1,2,3]):
 
     save_path = os.path.join(args.plot_path, args.name + f"_pc_map.pdf")
-    if not args.cov or os.path.isfile(save_path):
+    if not args.meta or os.path.isfile(save_path):
         return
     
   
@@ -50,9 +50,7 @@ def plot_map(args,pc_list = [1,2,3]):
     if not os.path.isfile(pc_avg):
 
         # read region of births from samples and get counter
-        birth_df = pd.read_csv(args.cov,sep = identify_separator(args.cov), index_col='FINNGENID')[['regionofbirthname']]
-        count_df = birth_df['regionofbirthname'].value_counts().to_frame('count')
-        count_df.index.names = ['regionofbirth']
+        birth_df = pd.read_csv(args.meta,sep = identify_separator(args.meta), index_col='FINNGENID')[['regionofbirthname']]
 
         # return valid regions
         loc_df = get_loc_df(args)
@@ -63,6 +61,10 @@ def plot_map(args,pc_list = [1,2,3]):
         eigenvec.index.names = ['FINNGENID']
         print(eigenvec.head())
         print(birth_df.head())
+
+        count_df =  pd.concat([birth_df,eigenvec],join = 'inner',axis = 1)['regionofbirthname'].value_counts().to_frame('count')
+        count_df.index.names = ['regionofbirth']
+
         tmp_avg = pd.concat([birth_df,eigenvec],join = 'inner',axis = 1).set_index('regionofbirthname').groupby('regionofbirthname').mean()
         print(tmp_avg.head())
         region_avg = pd.concat([loc_df,tmp_avg,count_df],join = 'inner',axis = 1)
@@ -243,9 +245,9 @@ def return_outliers_df(args):
     """
     out_file = os.path.join(args.plot_path,'plot_data',"pc_ethnic.csv")
     if not os.path.isfile(out_file):
-        eigenvec_path = os.path.join(args.pca_outlier_path,'first_round','first_round_' + args.name + '.eigenvec')
+        eigenvec_path =  args.tg_pca_file  + '.eigenvec'
         #import metadata about samples
-        outlier_info = os.path.join(args.pca_outlier_path,'first_round','first_round_' + args.name + '_outlier_samples.tsv')
+        outlier_info = args.tg_pca_file + '_outlier_samples.tsv'
         samples = np.loadtxt(args.sample_fam,usecols = 1,dtype = str)
         superpops = set(np.loadtxt(args.data_path + 'superpop.csv',dtype = str,delimiter =',',usecols = 1))
         # read pc data

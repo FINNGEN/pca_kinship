@@ -6,11 +6,86 @@ import os,shlex
 
 etnoDownload = 'ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/working/20130606_sample_info/20130606_sample_info.txt'
 
+
+
+#################
+#-- BASIC PCA --#
+#################
+def outlier_pca(args):
+    '''
+    Performs single or double round pca outlier detection.
+    Returns the final list of outliers in .fam format
+    '''
+
+    outliers = pca_round(args)
+    
+    args.ethnic_pca_outliers = os.path.join(args.pca_outlier_path, args.name + '_ethnic_outliers.txt')
+    if not os.path.os.path.isfile(args.ethnic_pca_outliers) or args.force:
+        args.force = True 
+        # remove tg samples from list of outliers and save in _ethnic outliers
+        tg_sample_list = np.loadtxt(args.new_tg +'.fam',dtype = str,usecols = 1)
+        false_finngen = [sample for sample in outliers if sample not in tg_sample_list]
+        write_fam_samplelist(args.ethnic_pca_outliers,false_finngen)
+    
+    else:
+        pass
+    print(f'total finngen ethnic outliers : {mapcount(args.ethnic_pca_outliers)}' )
+                                    
+        
+def pca_round(args,remove_list = None):
+    '''
+    Performs PCA + outlier_detection and returns the list of outliers
+    '''
+    local_path=  os.path.join(args.pca_outlier_path, '1k_pca/')
+    make_sure_path_exists(local_path)
+    remove = ''
+    if remove_list is not None:
+        remove_file = args.misc_path + tag + '_remove.fam'
+        write_fam_samplelist(remove_file,remove_list)
+        remove =  f' --remove {remove_file}'
+
+    #######
+    # PCA #
+    #######
+    args.tg_pca_file = os.path.join(local_path,args.name)
+    if not os.path.isfile( args.tg_pca_file+ '.eigenval') or args.force:
+        args.force = True 
+        #individuals that need to be removed
+        print(remove)
+        cmd = f'plink2 --bfile {args.merged_plink_file} --read-freq  {args.merged_plink_file}.afreq {remove} --pca {args.pca_components} approx biallelic-var-wts --threads {args.cpus}  -out {args.tg_pca_file}'
+        print(cmd)
+        subprocess.call(shlex.split(cmd))
+        
+    #####################
+    # OUTLIER DETECTION #
+    #####################
+    outlier_samples = args.tg_pca_file +'_outlier_samples.tsv'
+    iterations = ' 1000 -p' if args.test else ' 3000 '
+
+    if not os.path.isfile(outlier_samples) or args.force:
+        args.force = True 
+        print('generating outliers at ' + args.tg_pca_file)
+        cmd = f' -f {args.tg_pca_file+".eigenvec"} -e {args.tg_pca_file+".eigenval"} -s {args.annot_pop} --n_iterations {iterations}  -o {args.tg_pca_file}'
+        tmp_cmd  =f"Rscript {os.path.join(args.rootPath,'scripts/pca_outlier_detection/scripts/classify_outliers.R')} {cmd} "
+        subprocess.call(shlex.split(tmp_cmd))
+
+           
+    #return outliers
+    outlier_file = args.tg_pca_file + '_outliers.txt'
+    outliers = np.genfromtxt(outlier_samples, dtype=str, usecols=(0, 1), delimiter='\t')
+    out_mask = (outliers[:,1] =='TRUE')
+    outliers = outliers[:,0][out_mask]
+    args.v_print(3,f'1kg total outliers : {len(outliers)}')
+    
+    return list(outliers)
+
+
+
 def finn_or_not(args):
     '''
     Determines if remaining samples belong to the FIN or EUR cluster.
     '''
-    args.eur_outlier_path = os.path.join(args.pca_outlier_path, "finngen_pca/")
+    args.eur_outlier_path = os.path.join(args.pca_outlier_path, "eur_pca/")
     make_sure_path_exists(args.eur_outlier_path)
     args.false_finns = os.path.join(args.pca_outlier_path,args.name + '_false_finns.txt')
 
@@ -27,8 +102,7 @@ def finn_or_not(args):
         args.force = True
         batches = np.loadtxt(args.batches,dtype =str)
         # load summary statistics from the last round of outlier detection
-        tag = 'first_round' if args.outlier_pca_rounds == 1 else 'second_round'
-        last_round_samples = os.path.join(args.pca_outlier_path, tag ,  tag + '_' + args.name + '_outlier_samples.tsv')
+        last_round_samples =    args.tg_pca_file + '_outlier_samples.tsv'
         cols = [return_header(last_round_samples).index(elem) for elem in ['IID','outlier','SuperPops']]
         # keep inliers of latest round 
         outlier_iterator = basic_iterator(last_round_samples,columns = cols)  
@@ -89,80 +163,6 @@ def finn_or_not(args):
     print(f'total false finns : {mapcount(args.false_finns)}')
    
   
-#################
-#-- BASIC PCA --#
-#################
-def outlier_pca(args):
-    '''
-    Performs single or double round pca outlier detection.
-    Returns the final list of outliers in .fam format
-    '''
-
-    outliers = pca_round(args,'first_round')
-    if args.outlier_pca_rounds > 1:
-        # if requested, do another round
-        outliers += pca_round(args,'second_round',remove_list = outliers)
-    
-    args.ethnic_pca_outliers = os.path.join(args.pca_outlier_path, args.name + '_ethnic_outliers.txt')
-    if not os.path.os.path.isfile(args.ethnic_pca_outliers) or args.force:
-        args.force = True 
-        # remove tg samples from list of outliers and save in _ethnic outliers
-        tg_sample_list = np.loadtxt(args.new_tg +'.fam',dtype = str,usecols = 1)
-        false_finngen = [sample for sample in outliers if sample not in tg_sample_list]
-        write_fam_samplelist(args.ethnic_pca_outliers,false_finngen)
-    
-    else:
-        pass
-    print(f'total finngen ethnic outliers : {mapcount(args.ethnic_pca_outliers)}' )
-                                    
-        
-def pca_round(args,tag,remove_list = None):
-    '''
-    Performs PCA + outlier_detection and returns the list of outliers
-    '''
-    local_path=  os.path.join(args.pca_outlier_path, tag+'/')
-    make_sure_path_exists(local_path)
-    remove = ''
-    if remove_list is not None:
-        remove_file = args.misc_path + tag + '_remove.fam'
-        write_fam_samplelist(remove_file,remove_list)
-        remove =  f' --remove {remove_file}'
-
-    #######
-    # PCA #
-    #######
-    pca_output_file = os.path.join(local_path,tag +'_' + args.name)
-    if not os.path.isfile( pca_output_file+ '.eigenval') or args.force:
-        args.force = True 
-        #individuals that need to be removed
-        print(remove)
-        cmd = f'plink2 --bfile {args.merged_plink_file} --read-freq  {args.merged_plink_file}.afreq {remove} --pca {args.pca_components} approx biallelic-var-wts --threads {args.cpus}  -out {pca_output_file}'
-        print(cmd)
-        subprocess.call(shlex.split(cmd))
-        
-    #####################
-    # OUTLIER DETECTION #
-    #####################
-    outlier_samples = pca_output_file +'_outlier_samples.tsv'
-    iterations = ' 1000 -p' if args.test else ' 3000 '
-
-    if not os.path.isfile(outlier_samples) or args.force:
-        args.force = True 
-        print('generating outliers at ' + pca_output_file)
-        cmd = f' -f {pca_output_file+".eigenvec"} -e {pca_output_file+".eigenval"} -s {args.annot_pop} --n_iterations {iterations}  -o {pca_output_file}'
-        tmp_cmd  =f"Rscript {os.path.join(args.rootPath,'scripts/pca_outlier_detection/scripts/classify_outliers.R')} {cmd} "
-        subprocess.call(shlex.split(tmp_cmd))
-
-           
-    #return outliers
-    outlier_file = pca_output_file + '_outliers.txt'
-    outliers = np.genfromtxt(outlier_samples, dtype=str, usecols=(0, 1), delimiter='\t')
-    out_mask = (outliers[:,1] =='TRUE')
-    outliers = outliers[:,0][out_mask]
-    print(f'{tag} total outliers : {len(outliers)}')
-    
-    return list(outliers)
-
 
 
 def build_superpop(args):

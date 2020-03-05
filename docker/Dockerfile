@@ -23,11 +23,12 @@ RUN wget --quiet https://repo.anaconda.com/archive/Anaconda3-2019.10-Linux-x86_6
     rm ~/anaconda.sh
     
 RUN  ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
-    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
-    echo "conda activate base" >> ~/.bashrc && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.profile && \
     find /opt/conda/ -follow -type f -name '*.a' -delete  && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
+    echo "export PATH=\"/opt/conda/bin:$PATH\" " >> ~/.profile && \
     /opt/conda/bin/conda clean -afy
+    
 
 ADD ./docker/requirements.txt .
 RUN /opt/conda/bin/conda install --file requirements.txt --yes
@@ -39,8 +40,9 @@ RUN wget http://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_latest.zip && 
 RUN wget http://s3.amazonaws.com/plink2-assets/alpha2/plink2_linux_x86_64.zip && unzip plink2*.zip -d /usr/local/bin/ &&  rm plink2*.zip
 
 #KING
-RUN wget http://people.virginia.edu/~wc9c/KING/Linux-king.tar.gz && tar -xzvf Linux-king.tar.gz -C /usr/local/bin && rm Linux*.tar.gz
+RUN wget http://people.virginia.edu/~wc9c/KING/Linux-king.tar.gz && tar -xzvf Linux-king.tar.gz -C /usr/local/bin && rm Linux*king*.tar.gz
 
+ENV PATH "/opt/conda/bin:$PATH"
 
 ADD scripts ../scripts
 ADD data ../data

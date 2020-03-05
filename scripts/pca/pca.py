@@ -36,19 +36,19 @@ def build_inliers(args):
                 rejected.append(sample)
             else:
                 outliers.append(sample)
-
+        print('done.')
         for entry in [(args.inlier_file,inliers),(args.outlier_file,outliers),(args.rejected_file,rejected),(args.final_samples,inliers+outliers)]:
             write_fam_samplelist(*entry)           
-
+            
     else:
         pass
 
     assert np.sum([mapcount(args.inlier_file),mapcount(args.outlier_file),mapcount(args.rejected_file)]) == args.n_samples
     print(f'PCA inliers (unrelated finns) : {mapcount(args.inlier_file)}')
     print(f'PCA outliers (related finns) : {mapcount(args.outlier_file)}')
-    print(f'PCA rejected (non finns and duplicates) : {mapcount(args.rejected_file)}')
     print(f'PCA final samples : {mapcount(args.final_samples)}')
-        
+    print(f'PCA rejected (non finns and duplicates) : {mapcount(args.rejected_file)}')
+    
 def fast_pca_inliers(args):
     '''
     Runs a fast pca based on inliers only.
@@ -91,7 +91,7 @@ def project_all(args):
     else:
         args.v_print(3,'inliers/outliers projected')
     # merge the files
-    args.eigenvec = os.path.join(args.pca_path, args.name + '_final.eigenvec')
+    args.eigenvec = os.path.join(args.pca_path, args.name + '.eigenvec.txt')
     if not os.path.isfile(args.eigenvec) or args.force:
         args.force = True
         
