@@ -1,5 +1,5 @@
 import os, shlex,subprocess
-from utils import mem_mib
+from utils import mem_mib,mapcount
 
 
 #thousand genome project downloads
@@ -23,7 +23,7 @@ def merge_1k(args):
     else:
         args.v_print(3,'thousand genomes/finngen shared plink file already generated.')
 
-
+    print(f"Total SNPs : {mapcount(args.merged_plink_file + '.bim')}")
 
 def subset_1k(args):
 

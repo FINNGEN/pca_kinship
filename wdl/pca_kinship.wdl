@@ -59,6 +59,7 @@ workflow pca_kinship {
         freq_file = kinship.freq,
         prefix = prefix,
         kin_file = kinship.kin,
+        duplicates = kinship.duplicates,
         tg_bed = filter_tg.bed,
         tg_fam = filter_tg.fam,
         tg_bim = filter_tg.bim,
@@ -73,15 +74,19 @@ task pca {
     File bim_file
     File fam_file
     File freq_file
+    
     # filtered tg plink data
     File tg_bed 
     File tg_fam 
-    File tg_bim 
+    File tg_bim
+    
     # sample metadata
     File sample_file
     File kin_file
+    File duplicates
     File metadata
     String prefix
+    
     # runtime data
     String docker
     String pca_docker
@@ -90,7 +95,7 @@ task pca {
     Int mem = ceil(size(bed_file,'GB')) + 10
     
     command {
-        python3 /scripts/pca_main.py --bed ${bed_file} --tg-bed ${tg_bed}  -k ${kin_file}  -s ${sample_file}  --name ${prefix} --release   --meta ${metadata} --release --plot -o .
+        python3 /scripts/pca_main.py --bed ${bed_file} --tg-bed ${tg_bed}  -k ${kin_file}  -s ${sample_file}  --name ${prefix}  --meta ${metadata} --release  -o .
     }
     
     runtime {
@@ -102,15 +107,15 @@ task pca {
 	preemptible: 0
     }
     output {
-        Array[File] log = glob('/cromwell_root/documentation/${prefix}.log')
-        Array[File] cohort_plot = glob('/cromwell_root/documentation/${prefix}_cohorts_plots.pdf')
-        Array[File] ethnic_plot = glob('/cromwell_root/documentation/${prefix}_ethnic_outliers.pdf')
-        Array[File] ethnic_plot_2d = glob('/cromwell_root/documentation/${prefix}_ethnic_outliers_pairwise.pdf')
-        Array[File] eur_plot = glob('/cromwell_root/documentation/${prefix}_eur_outliers.pdf')
-        Array[File] eur_plot_2d = glob('/cromwell_root/documentation/${prefix}_eur_outliers_pairwise.pdf')
-        Array[File] pca_plot = glob('/cromwell_root/documentation/${prefix}_final_pca.pdf')
-        Array[File] pca_plot_2d = glob('/cromwell_root/documentation/${prefix}_final_pca_pairwise.pdf')
-        Array[File] geo_plot = glob('/cromwell_root/documentation/${prefix}_pc_map.pdf')
+        File log = glob('/cromwell_root/documentation/${prefix}.log')
+        File cohort_plot = glob('/cromwell_root/documentation/${prefix}_cohorts_plots.pdf')
+        File ethnic_plot = glob('/cromwell_root/documentation/${prefix}_ethnic_outliers.pdf')
+        File ethnic_plot_2d = glob('/cromwell_root/documentation/${prefix}_ethnic_outliers_pairwise.pdf')
+        File eur_plot = glob('/cromwell_root/documentation/${prefix}_eur_outliers.pdf')
+        File eur_plot_2d = glob('/cromwell_root/documentation/${prefix}_eur_outliers_pairwise.pdf')
+        File pca_plot = glob('/cromwell_root/documentation/${prefix}_final_pca.pdf')
+        File pca_plot_2d = glob('/cromwell_root/documentation/${prefix}_final_pca_pairwise.pdf')
+        File geo_plot = glob('/cromwell_root/documentation/${prefix}_pc_map.pdf')
         }
 
 }
@@ -136,7 +141,7 @@ task kinship{
     command {
         python3  /scripts/ped.py \
         --bed ${bed_file} \
-        '--fam '  ${sub_fam} \
+        --fam   ${sub_fam} \
         -o ${out_path} \
         --prefix ${prefix} \
         --pheno-file ${pheno_file} \
@@ -153,6 +158,7 @@ task kinship{
     }
 
     output {
+        File readme = "${out_path}/${prefix}_kinship_readme"
         # DATA
         File bed = "${out_path}/data/${prefix}_kinship.bed"
         File fam = "${out_path}/data/${prefix}_kinship.fam"

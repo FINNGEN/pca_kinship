@@ -1,69 +1,49 @@
-from utils import basic_iterator,mapcount,np,subprocess,return_open_func,identify_separator,return_header,make_sure_path_exists,write_fam_samplelist
-from collections import defaultdict as dd
-from collections import Counter
-import pandas as pd
+from utils import mapcount,subprocess,make_sure_path_exists,write_fam_samplelist,tmp_bash
 import networkx as nx
+import numpy as np
 import os.path,shlex,shutil
 
-kinship_range = {0:[0.354,1],1: [0.177, 0.354], 2: [0.0884, 0.177], 3: [0.0442, 0.0884]}
+
 
 def kinship(args):
     '''
     Builds a new plink file for king and performs king analysis
+    Returns:
+    args.kin (if missings) : output of KING --related
+    args.duplicates : list of duplicates
+    args.related_couples : .tsv file with related couples
+    args.related_individuals : list of related individuals
     '''
-  
-    # CALCULATE KINSHIP WITHIN DEGREE 3 if file is not passed
-    if not args.kin:
-        args.kin = args.kinPath + args.name +'.kin0'
-        if not os.path.isfile(args.kin) or args.force:
-            download_king()
-            print('generating kinship relations file to ',args.kin)
-            cmd = f'king -b {args.bed}  --kinship --degree 3 --cpus {args.cpus} --prefix {args.kin.split(".kin0")[0]}'
-            subprocess.call(shlex.split(cmd))
-        
-    else:
-        args.v_print(3,'kinship already calculated')
-
- 
+    
     # Return LIST OF RELATED INDIVIDUALS TO BE REMOVED AND LIST OF DUPLICATES
     args.related_couples = os.path.join(args.kinPath,args.name  +'_related_couples_' + str(args.degree) + '.txt')
     args.duplicates = os.path.join(args.kinPath,args.name  +'_duplicates.txt')
     if not os.path.isfile(args.related_couples) or not os.path.isfile(args.duplicates) or args.force:
-        args.force = True
-        print('Generating degree ' + str(args.degree) + ' related couples ... ')
-        
-        columns = [return_header(args.kin).index(elem) for elem in ['ID1','ID2','Kinship']]
-        iterator = basic_iterator(args.kin,columns = columns,skiprows=1)
-        
-        duplicates = []
-        deg_dict = dd(lambda : 3)
-        with open(args.related_couples,'wt') as o:
-            for sample1,sample2,kinship_value in iterator:
-              
-                kinship_deg = return_degree(float(kinship_value))
-                if kinship_deg <= args.degree:
-                    o.write(sample1 +'\t'+ sample2 + '\n')
-                if kinship_deg ==0:
-                    duplicates.append(sample1)
-                    duplicates.append(sample2)
-                for sample in sample1,sample2:
-                    old_deg  = deg_dict[sample]
-                    deg_dict[sample] = min(deg_dict[sample],kinship_deg)
+
+        if not args.kin:
+            args.kin = os.path.join(args.kinPath,args.name + '.kin0')
             
-                    
-        duplicates = set(duplicates)
-        write_fam_samplelist(args.duplicates,duplicates)
-        print('done.')
-        with open(os.path.join(args.kinPath,args.name  +'_kinship_count.txt'),'wt') as o :
-            count = Counter(deg_dict.values())
-            for i in range(0,4):
-                o.write(str(i) + '\t' + str(count[i]) + '\n')
-            
+        if not args.dup:
+            args.dup = args.kin.replace('kin0','con')
+
+        if not os.path.isfile(args.dup) or not os.path.isfile(args.kin) or args.force:
+            download_king()
+            print('generating kinship relations file to ',args.kin)
+            cmd = f'king -b {args.bed}  --related --degree 2 --duplicate --cpus {args.cpus} --prefix {args.kin.split(".kin0")[0]}'
+            subprocess.call(shlex.split(cmd))
+        
+        
+        deg_cmd = f"cut -f 2,4 {args.kin}  | sed -E 1d  > {args.related_couples}"
+        tmp_bash(deg_cmd)
+        # cuts IID of duplicates, returns uniques and generates duplicate.fam file
+        dup_cmd = f"cut -f 2,4 {args.dup}" + """  | sed -E 1d |grep -o -E '\\w+' | sort -u -f >""" + args.duplicates
+        print(dup_cmd)
+        tmp_bash(dup_cmd)
     else:
-        pass
+        args.v_print(3,"related info already generated")
     
-    print(f'degree {args.degree} related couples : {mapcount(args.related_couples)}')
-    print(f"total duplicates : {mapcount(args.duplicates)}")
+    print(f'Degree {args.degree} related couples : {mapcount(args.related_couples)}')
+    print(f"Total duplicates : {mapcount(args.duplicates)}")
 
     # RETURN SET OF RELATED INDIVIDUALS WITH GREEDY AND NX ALGORITHMS
     args.related_individuals = args.kinPath + args.name + '_related_individuals_' + str(args.degree) + '.txt'
@@ -83,8 +63,8 @@ def kinship(args):
         print('Done.')
         
         # remove false finns
-        print(f'removing non finns before starting to trim nodes {args.false_finns}')
-        remove_nodelist = np.loadtxt(args.false_finns,dtype = str,usecols =[0])
+        print(f'removing non finns before starting to trim nodes {args.false_finns} {mapcount(args.false_finns)}')
+        remove_nodelist = np.loadtxt(args.false_finns,dtype = str)
         g.remove_nodes_from(remove_nodelist)
     
         # native nx algorithm vs greedy algorithm
@@ -103,12 +83,13 @@ def kinship(args):
         print(f'{len(related_greedy)} greedy related')
 
         # return smaller set of related nodes from the two algorithms
-        to_be_removed = min(related_greedy,related_nodes)             
-        write_fam_samplelist(args.related_individuals,to_be_removed)
+        np.savetxt(args.related_individuals,min(related_greedy,related_nodes),fmt = '%s' )
+
+
     else:
         args.v_print(1,'list of related samples already generated.')
         
-    print(f'degree {args.degree} related individuals : {mapcount(args.related_individuals)}')
+    print(f'Degree {args.degree} related individuals : {mapcount(args.related_individuals)}')
     
 
 def sanity_check(graph,nodes):
@@ -174,15 +155,6 @@ def download_king():
         
         subprocess.call('king')
  
-def return_degree(kinship_value):
-
-    for degree in kinship_range:
-        degree_extremes = kinship_range[degree]
-        if degree_extremes[0]  <= kinship_value <= degree_extremes[1]:
-            return degree
-    return 4
-
-
 
 def connected_component_subgraphs(G):
     for c in nx.connected_components(G):

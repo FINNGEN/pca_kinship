@@ -1,4 +1,4 @@
-from utils import pretty_print,file_exists,make_sure_path_exists,get_filepaths
+from utils import pretty_print,file_exists,make_sure_path_exists,get_filepaths,merge_files,mapcount
 import multiprocessing,glob,argparse,os.path,subprocess,shlex,shutil
 from pca import batches,tg,kinship,pca,plot,true_finns
 def main(args):
@@ -19,10 +19,10 @@ def main(args):
     pretty_print('TRUE FINNS') 
     args.pca_outlier_path = os.path.join(args.out_path, 'outliers_pca/')
     make_sure_path_exists(args.pca_outlier_path)
-    true_finns.build_superpop(args)
     true_finns.outlier_pca(args)
     true_finns.finn_or_not(args)
-
+    true_finns.final_merge(args)
+    
     #KINSHIP DATA
     pretty_print('KINSHIP')
     args.kinPath = os.path.join(args.out_path,'kinship/')
@@ -38,14 +38,13 @@ def main(args):
     pca.project_all(args)  
 
     #PLOT
-    if args.plot:
-        args.plot_path = os.path.join(args.out_path,'plots')
-        pretty_print('PLOTTING')      
-        make_sure_path_exists(args.plot_path)
-        plot.plot_final_pca(args)
-        plot.plot_first_round_outliers(args)
-        plot.plot_fin_eur_outliers(args)
-        plot.plot_map(args)
+    args.plot_path = os.path.join(args.out_path,'plots')
+    make_sure_path_exists(args.plot_path)
+    plot.plot_final_pca(args)
+    plot.plot_first_round_outliers(args)
+    plot.plot_fin_eur_outliers(args)
+    plot.plot_map(args)
+    
     return True
 
 
@@ -61,7 +60,8 @@ if __name__=='__main__':
 
     #KINSHIP
     parser.add_argument('--degree',type=int,help='Degree for Kinship',default = 2)
-    parser.add_argument('-k',"--kin", type=file_exists, help = "File with degree 3 kinship")
+    parser.add_argument('-k',"--kin", type=file_exists, help = "File with king related individuals")
+    parser.add_argument('-d',"--dup", type=file_exists, help = "File with king duplicates")
 
     #PCA
     parser.add_argument('--pca-components',type=int,help='Components needed for pca',default = 20)
@@ -76,7 +76,6 @@ if __name__=='__main__':
     #optional tags
     parser.add_argument('--exclude',type = file_exists,help ='list of snps to exclude',default = None)
     parser.add_argument('--test',type = int,default =0,help = 'Flag for quick pca_outlier. For testing purposes. It only keeps 10k samples.')
-    parser.add_argument('--plot',action = 'store_true',help = 'Flag for plotting')
     parser.add_argument("--cpus",type = int, help = "number of cpus to use", default =  multiprocessing.cpu_count())
     parser.add_argument('--force',action = 'store_true',help = 'Replaces files by force',default = False)
     parser.add_argument('--release',action = 'store_true',help = 'Flag for data release',default = False)
@@ -85,16 +84,8 @@ if __name__=='__main__':
  
     args=parser.parse_args()
     args.name = args.name
-    # creating outputpath
     make_sure_path_exists(args.out_path)
-
-    # write log file
-    log_file =os.path.join(args.out_path ,args.name + '.log' )
-    with open(log_file,'wt') as o:
-        d = vars(args)
-        for key in d:
-            o.write(f"{key}:{d[key]} \n")   
-    
+  
     args.rootPath = '/'.join(os.path.realpath(__file__).split('/')[:-2]) + '/'
     args.data_path = os.path.join(args.rootPath,'data/')
     args.misc_path =  os.path.join(args.out_path, 'misc/')
@@ -111,15 +102,14 @@ if __name__=='__main__':
          
     args.success = False
     success = main(args)
+    
+    log_file =os.path.join(args.out_path ,args.name + '.log' )
     if success:
-        print('Pipeline ran successfully, logging...')
         args.force = False
         import contextlib
         with open(log_file,'a') as f:
             with contextlib.redirect_stdout(f):
                 main(args)
-
-
 
 
     if args.release:

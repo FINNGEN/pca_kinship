@@ -183,7 +183,7 @@ def return_fin_eur_df(args):
     if not os.path.isfile(out_file):
         pc_avg = ["PC1_AVG",'PC2_AVG','PC3_AVG']
         df_list = []
-        eur_outliers = np.loadtxt(os.path.join(args.pca_outlier_path, 'finngen_eur_outliers.txt'),dtype = str,usecols =1)
+        eur_outliers = np.loadtxt(args.finngen_eur_outliers,dtype = str)
 
         for tag in ['eur','fin','finngen']:
             score_file = args.eur_outlier_path + tag + '.sscore' 

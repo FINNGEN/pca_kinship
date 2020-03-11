@@ -127,7 +127,7 @@ class _binFinder(object):
 
         lo, hi = 0, len(self.bin_limits) - 1
         while (lo < hi - 1):
-            mid = (lo + hi) / 2
+            mid = int((lo + hi) / 2)
             # print "bin_limits["+str(lo)+"] = ", str(self.bin_limits[lo]),
             # print "  bin_limits["+str(mid)+"] = ", str(self.bin_limits[mid]),
             # print "  bin_limits["+str(hi)+"] = ", str(self.bin_limits[hi])

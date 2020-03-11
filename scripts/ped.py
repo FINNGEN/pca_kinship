@@ -1,6 +1,8 @@
 import os,pickle, subprocess,shlex,argparse,multiprocessing,shutil
 from utils import basic_iterator,return_header,mapcount,get_path_info,file_exists,make_sure_path_exists,cpus,tmp_bash,pretty_print,identify_separator,NamedTemporaryFile,get_filepaths
 from collections import defaultdict as dd
+from collections import Counter
+from verkko.binner import binner
 import numpy as np
 import pandas as pd
 cpus = multiprocessing.cpu_count()
@@ -31,7 +33,7 @@ def build_bed(args):
         print(cmd)
         subprocess.call(shlex.split(cmd))
 
-
+    
 ######################
 #------KINSHIP-------#
 ######################
@@ -47,7 +49,7 @@ def kinship(args):
         args.force = True
         cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate --degree 2 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot '
         print(cmd)
-        with open(args.kinship_log_file,'at') as f: subprocess.call(shlex.split(cmd),stdout = f)
+        with open(args.kinship_log_file,'wt') as f: subprocess.call(shlex.split(cmd),stdout = f)
         # produce R scripts, fix them and run them
     else:
         print("related file already generated")
@@ -67,32 +69,33 @@ def plot_kinship(args):
     '''
 
     args.kinship_fig = os.path.join(args.out_path,args.prefix +'_kinship_distribution.pdf')
-    if  os.path.isfile(args.kinship_fig):
+    if  os.path.isfile(args.kinship_fig) and not args.force:
         print(3,'kinship plot already done')
         return
     
     else:
        print('plotting kinship...')
-
-    
-    from verkko.binner import binner
    
     kin_dump = os.path.join(args.kinship_path, args.prefix +'_kinship.npy')
-    if not os.path.isfile(kin_dump) or args.force: 
+    if not os.path.isfile(kin_dump) or  args.force: 
         print('uploading kinship data')
         kin_data = pd.read_csv(args.kin_file,sep = identify_separator(args.kin_file), usecols = ['Kinship']).values.flatten()
         print('dumping it')
         np.save(kin_dump,kin_data)
     else:
-        kin_data = np.load(kin_dump)
 
+        kin_data = np.load(kin_dump, allow_pickle = True)
+        
     entries = len(kin_data)
-    
+
+
+    xPos = [0.0442,0.0884,0.177,0.354,0.51]
+       
     bin_data_file = os.path.join(args.kinship_path,'bin_average.npy')
     plot_data_file = os.path.join(args.kinship_path,'plot_data.npy')
     print('importing bin data..')
     if not os.path.isfile(bin_data_file) or not os.path.isfile(plot_data_file) or args.force:
-        bins = binner.Bins(float,min(kin_data),max(kin_data),'log',1.05)
+        bins = binner.Bins(float,min(xPos),1,'log',1.05)
         print('bin data missing, generating...')
         countNotNormalized = bins.bin_count_divide(kin_data)
         count = np.array(binner.normalize(list(countNotNormalized)))
@@ -117,8 +120,8 @@ def plot_kinship(args):
     fig = plt.figure()
     gs = mpl.gridspec.GridSpec(1,1)
     
-    xPos = [0.0442,0.0884,0.177,0.354,0.51]
-    texts = ['3rd Deg','2nd Deg','1st Deg','Twins/Duplicates']
+
+    texts = ['3rd','2nd','FS/PO','MZ/Duplicates']
     ax = fig.add_subplot(gs[0,0])
     ax2 = ax.twinx()
     ax2.set_ylim([0,1])
@@ -134,23 +137,10 @@ def plot_kinship(args):
     #ax2.set_yticklabels([0,entries])
     ax2.set_ylabel(r'$P(k < x) $')
 
-    #add degree lines
-    total = 0
-    for i,pos in enumerate(xPos[:-1]):
-        upper_mask = (kin_data >= pos)
-        lower_mask = (kin_data < xPos[i+1])
-        final_mask = upper_mask & lower_mask
-        degree_data = str(len(kin_data[final_mask]))
-        ax.axvline(x = pos, color = 'k',linestyle = '--',linewidth = 0.2)
-        text_xpos = pos + (xPos[i+1] - pos)/2
-        text = texts[i]
-        ax.text(text_xpos,max(plot_data)*1.1,degree_data + '\n' +  text,fontsize = 5,horizontalalignment = 'center')
-
     for tick in ax.xaxis.get_major_ticks():
         tick.label.set_rotation(30)
         tick.label.set_fontsize(6)     
 
-                 
     fig.savefig(args.kinship_fig)
     plt.close()
     print('done')
@@ -215,113 +205,148 @@ def king_pedigree(args):
     
     else:
         print(f'pedigree files already generated')
-
-       
+   
+    args.newparents = mapcount(pedigree_parents_file)
+    args.newfids = mapcount(pedigree_ids_file)
+    
     scriptFile = NamedTemporaryFile(delete=True)
     tmp_file = scriptFile.name
-
-
     args.log_file = os.path.join(args.out_path,args.prefix + '.log')
-    with open(args.log_file,'wt') as o:
-        o.write('#----KING SUMMARY-----#\n')
 
+    
     tmp_bash(f"cat {args.kinship_log_file} | grep 'Relationship summary' -A 3| grep MZ  > {tmp_file}")
     tmp_bash(f"cat {args.kinship_log_file} | grep 'Relationship summary' -A 3| grep Inference  >> {tmp_file}")
-    tmp_bash(f"head -n2 {tmp_file} | cut -f 2- >> {args.log_file}")
-    
+    tmp_bash(f"""head -n2 {tmp_file} | cut -f 2-   > {args.log_file}""")
+
+    lines = []
+    with open(args.log_file,'rt') as i: 
+        for line in i:
+            lines.append(line.strip().split('\t'))
+
+    with open(args.log_file,'wt') as o:
+        o.write("### KING Summary\n")
+        o.write('|' + '|'.join(lines[0])  + '|\n')
+        sep = ['--' for elem in lines[0]]
+        o.write('|' + '|'.join(sep) + '|\n')
+        o.write('|' + '|'.join(lines[1]) + '|\n')
+
     with open(args.log_file,'at') as o:
-        o.write('\n#----MANUAL COUNT-----#\n')
+        o.write('\n### Manual Count \n')
         desc_list = []        
-                
-        desc ='TRIOS: NUMBER OF FINNGEN_MOTHER FINNGEN_FATHER COUPLES WHO HAVE AT LEAST ONE SON IN FINNGEN'
+
+        o.write('|Kinship Type|Count|Description|\n')
+        o.write('|--|--|--|\n')
+        
+        desc ='Number of Finngen_mother Finngen_father couples who have at least one son in Finngen'
         basic_cmd = f"""cat {pedigree_parents_file} |  awk '{{print $3"_"$4}}' | sort  """
         out_cmd = f" | wc -l >{tmp_file}"
         trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep -o '\\bF\w*_FG\w*'  {out_cmd}""" 
         tmp_bash(trio_cmd)
-        trios = int(open(tmp_file).read())
-        o.write(':'.join(['Trios',str(trios)]) + '\n')
-        desc_list.append(desc)
+        trios =  int(open(tmp_file).read())
+        o.write('|' + '|'.join(['Trios',str(trios),desc]) + '|\n')
         
-        desc = "ALL TRIOS: TOTAL NUMBER OF TRIOS (I.E. COUNTING MULTIPLES)"
+        desc = "Total number of trios (i.e. counting multiples)"
         all_trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep  '\\bFG\w*_FG\w*' |  awk '{{count+=$1}} END {{print count}}' > {tmp_file}""" 
         tmp_bash(all_trio_cmd)
-        all_trios = int(open(tmp_file).read())
-        o.write(':'.join(['All Trios',str(all_trios)]) + '\n')
-        desc_list.append(desc)
+        all_trios =  int(open(tmp_file).read())
+        o.write('|' + '|'.join(['All Trios',str(all_trios),desc]) + '|\n')
 
-        desc = "DUOS: NUMBER OF PARENT COUPLES WHERE ONLY ONE IS IN FINNGEN WHO HAVE A FINNGEN CHILD."
+        desc = "Number of parent couples where only one is in finngen who have a finngen child"
         duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o '\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'  {out_cmd} " 
         tmp_bash(duos_cmd)
-        duos = int(open(tmp_file).read()) 
-        o.write(':'.join(['Duos',str(duos)]) + '\n')
-        desc_list.append(desc)
+        duos =  int(open(tmp_file).read())
+        o.write('|' + '|'.join(['Duos',str(duos),desc]) + '|\n')
         
-        desc = "ALL DUOS: TOTAL NUMBER OF DUOS COUNTING MULTIPLES"
+        desc = "Total number of duos counting multiples"
         all_duos_cmd =  f" {basic_cmd} |  uniq -c | grep  '\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'| awk '{{count+=$1}} END {{print count}}' > {tmp_file} " 
         tmp_bash(all_duos_cmd)
-        all_duos = int(open(tmp_file).read()) 
-        o.write(':'.join(['All Duos',str(all_duos)]) + '\n')
-        desc_list.append(desc)
+        all_duos = int(open(tmp_file).read())
+        o.write('|' + '|'.join(['All Duos',str(all_duos),desc]) + '|\n')
         
-        desc = "SIBLINGS: NUMBER OF FAMILIES IN WHICH THERE ARE AT LEAST TWO FINNGEN SAMPLES WITH SAME PARENTS"
+        desc = "Number of families in which there are at least two finngen samples with same parents"
         sib_cmd = f"{basic_cmd} |  uniq -d  |  grep -v '0_' | grep -v '_0' {out_cmd}"
         tmp_bash(sib_cmd)
         sibs = int(open(tmp_file).read())
-        o.write(':'.join(['Siblings',str(sibs)]) + '\n')
-        desc_list.append(desc)
-        
-        desc = "TOTAL SIBLINGS : ALL SIBLINGS INCLUNDING MULTIPLE FROM EACH FAMILY"
+        o.write('|' + '|'.join(['Siblings',str(sibs),desc]) + '|\n')
+
+        desc = "Total number of siblings including multiple from each family"
         all_sib_cmd = f"{basic_cmd} |  uniq -cd  |  grep -v '0_' | grep -v '_0' | awk '{{count+=$1}} END {{print count}}' > {tmp_file}"
         tmp_bash(all_sib_cmd)
         all_sibs = int(open(tmp_file).read())
-        o.write(':'.join(['All Siblings',str(sibs)]) + '\n')
-        desc_list.append(desc)
+        o.write('|' + '|'.join(['All Siblings',str(all_sibs),desc]) + '|\n')
 
-        o.write('\n#----DESCRIPTION-----#\n')
-        o.write('\n'.join(desc_list) + '\n')
         
+def release(args):
+    # move data to doc
+    import glob
+    doc_path = os.path.join(args.out_path,'documentation')
+    make_sure_path_exists(doc_path)
+    for f in get_filepaths(doc_path): os.remove(f) # clean path else shutil.copy might fail
+    for pdf in glob.glob(os.path.join(args.out_path,'*pdf')):
+        shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
+    for log in [args.log_file,args.kinship_log_file,args.pedigree_log_file]:
+        shutil.copy(log,os.path.join(doc_path,os.path.basename(log)))
+            
+    data_path = os.path.join(args.out_path,'data')
+    make_sure_path_exists(data_path)
+    for f in get_filepaths(data_path): os.remove(f) # clean path else shutil.copy might fail
+    all_files = get_filepaths(args.out_path)
+    for f in [f for f in get_filepaths(args.out_path) if f.endswith(('kin0','con'))]:
+        shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
+    endings = ('.bed','.fam','.bim','afreq',)
+    for f in [f for f in get_filepaths(args.out_path) if f.endswith(endings) and ('kinship' in f or 'pedigree' in f)]:
+        shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
 
-def main(args):
+    parent_path =  '/'.join(os.path.realpath(__file__).split('/')[:-2]) + '/'
+    readme = os.path.join(parent_path,'data','kinship.README')
+    out_readme = os.path.join(args.out_path,args.prefix + '_kinship_readme')
 
+    with open(args.log_file) as i:
+        summary = i.read()  
+       
+    with open(out_readme,'wt') as o, open(readme,'rt') as i:
+        word_map = {
+            '[PREFIX]':args.prefix,
+            '[NEW_PARENTS]':args.newparents,
+            '[NEW_FID]':args.newfids,
+            '[RELATED_COUPLES]':mapcount(args.kin_file) -1,
+            '[DUPLICATES]':mapcount(args.kin_file.replace('kin0','con')) -1,
+            '[SUMMARY]': summary,
+            '[N_SNPS]': mapcount(args.kinship_bed.replace('.bed','.bim')),
+            '[N_SAMPLES]': mapcount(args.kinship_bed.replace('.bed','.fam'))
+        }
+        for line in i:
+            for kw in word_map:
+                if kw in line:
+                    line = line.replace(kw,str(word_map[kw]))
+            o.write(line)
+            
+def main(args):    
+
+    parent_path =  '/'.join(os.path.realpath(__file__).split('/')[:-2]) + '/'
+    readme = os.path.join(parent_path,'data','kinship.README')
+    with open(readme,'rt') as i: print('test')
+    
     args.plink_path = os.path.join(args.out_path,'plink')
     make_sure_path_exists(args.plink_path)
     
     pretty_print("BUILD BED")
     build_bed(args)
-      
+    
     pretty_print("KINSHIP")
     args.kinship_path = os.path.join(args.out_path,'kinship')
     make_sure_path_exists(args.kinship_path)
     kinship(args)
     plot_kinship(args)
-    
+
     pretty_print("PEDIGREE")
     args.pedigree_path = os.path.join(args.out_path,'pedigree')
     make_sure_path_exists(args.pedigree_path)
     king_pedigree(args)
  
     if args.release:
-        # move data to doc
-        import glob
-        doc_path = os.path.join(args.out_path,'documentation')
-        make_sure_path_exists(doc_path)
-        for f in get_filepaths(doc_path): os.remove(f) # clean path else shutil.copy might fail
-        for pdf in glob.glob(os.path.join(args.out_path,'*pdf')):
-            shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
-        for log in [args.log_file,args.kinship_log_file,args.pedigree_log_file]:
-            shutil.copy(log,os.path.join(doc_path,os.path.basename(log)))
-            
-        data_path = os.path.join(args.out_path,'data')
-        make_sure_path_exists(data_path)
-        for f in get_filepaths(data_path): os.remove(f) # clean path else shutil.copy might fail
-        all_files = get_filepaths(args.out_path)
-        for f in [f for f in get_filepaths(args.out_path) if f.endswith(('kin0','con'))]:
-            shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
-        endings = ('.bed','.fam','.bim','afreq',)
-        for f in [f for f in get_filepaths(args.out_path) if f.endswith(endings) and ('kinship' in f or 'pedigree' in f)]:
-            shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
-        
-                 
+        release(args)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="kinship analysis & pedigree")
 

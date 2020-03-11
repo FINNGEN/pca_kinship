@@ -9,9 +9,9 @@ def build_inliers(args):
     '''
 
     #LOAD ALL RELEVANT LIST OF SAMPLES
-    related_samples = np.loadtxt(args.related_individuals,dtype = str,usecols = 0)
-    false_finns = np.loadtxt(args.false_finns,dtype = str,usecols = 0)
-    duplicates = np.loadtxt(args.duplicates,dtype = str,usecols = 0)
+    related_samples = np.loadtxt(args.related_individuals,dtype = str)
+    false_finns = np.loadtxt(args.false_finns,dtype = str)
+    duplicates = np.loadtxt(args.duplicates,dtype = str)
     # INLIERS
     args.inlier_file = os.path.join(args.pca_path,args.name +'_inliers.txt')
     args.outlier_file = os.path.join(args.pca_path,args.name +'_outliers.txt')
@@ -46,8 +46,8 @@ def build_inliers(args):
     assert np.sum([mapcount(args.inlier_file),mapcount(args.outlier_file),mapcount(args.rejected_file)]) == args.n_samples
     print(f'PCA inliers (unrelated finns) : {mapcount(args.inlier_file)}')
     print(f'PCA outliers (related finns) : {mapcount(args.outlier_file)}')
-    print(f'PCA final samples : {mapcount(args.final_samples)}')
     print(f'PCA rejected (non finns and duplicates) : {mapcount(args.rejected_file)}')
+    print(f'PCA final samples : {mapcount(args.final_samples)}')
     
 def fast_pca_inliers(args):
     '''

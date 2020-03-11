@@ -34,7 +34,7 @@ ADD ./docker/requirements.txt .
 RUN /opt/conda/bin/conda install --file requirements.txt --yes
 
 #PLINK 1.9
-RUN wget http://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_latest.zip && unzip plink_* -d /usr/local/bin && rm plink*zip
+RUN wget http://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_latest.zip && unzip plink_* -d /usr/local/bin && rm plink*ip
 
 #PLINK2
 RUN wget http://s3.amazonaws.com/plink2-assets/alpha2/plink2_linux_x86_64.zip && unzip plink2*.zip -d /usr/local/bin/ &&  rm plink2*.zip

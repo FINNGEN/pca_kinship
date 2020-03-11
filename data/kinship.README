@@ -1,0 +1,64 @@
+# FINNGEN KINSHIP & PEDIGREE RESULTS
+
+## [PREFIX] kinship data
+
+Imputed genotype data for the Analysis Team and collaborating partners. These data are personal data; thereby that must be treated according the Finnish Personal Data Act 523/1999, EU Data Protection Directive 95/46/EC and EU General Data Protection Regulation (GDPR).
+
+
+The pipeline takes as an input a list of pruned variants from the imputation panel and then proceeds to build a plink file with only the selected snps. In total [N_SNPS] snps are used in this run. The plink consists of [N_SAMPLES] samples.
+
+After this, king is run with flags --related --degree 2 and --duplicate. This returns the list of degree 2 couples as well as list of duplicate couples. This run consisted of:
+
+- [RELATED_COUPLES] degree 2 related couples
+- [DUPLICATES] duplicates
+
+
+Next, king is run with the flags --build --degree 3. This reconstructs the pedigree structure of the samples in the bed file.
+
+[NEW_PARENTS] samples have updated parents
+[NEW_FID] samples have updated FID
+
+
+This is the summary of [PREFIX] kinship family and family structure
+
+[SUMMARY]
+
+
+## File structure
+
+### Data
+
+#### Plink files
+| File |  Description  |
+|---|---|
+| [PREFIX]_kinship.bed | Plink bed file with only pruned variants used for kinship |
+| [PREFIX]_kinship.fam | Plink fam file with only pruned variants used for kinship |
+| [PREFIX]_kinship.bim | Plink bim file with only pruned variants used for kinship |
+| [PREFIX]_kinship.afreq |Plink freq file with only pruned variants used for kinship |
+| [PREFIX]_pedigree.fam | Update fam file with updated FIDs and sex |
+
+
+#### Kinship data
+| File |  Description  |
+|---|---|
+| [PREFIX].kin0 | List of related couples |
+| [PREFIX].con | List of duplicate couples |
+
+
+### Documentation
+
+#### Figures
+| File |  Description  |
+|---|---|
+| [PREFIX]_duplicateplot.pdf | Visualization of network of duplicates |
+| [PREFIX]_uniqfam0plot.pdf | Visualization of all unique family configurations |
+| [PREFIX]_relplot.pdf | IBD segments plot and Kinship vs IBD plot |
+| [PREFIX]_kinship_distribution.pdf | Distribution of kinship values |
+
+
+#### Logs
+| File |  Description  |
+|---|---|
+| [PREFIX].log | Summary stats of kinship data |
+| [PREFIX]_kinship.log | Output of KING --related flag |
+| [PREFIX]_pedigree.log | Output of KING --build flag |
