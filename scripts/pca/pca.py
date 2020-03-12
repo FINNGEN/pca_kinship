@@ -91,7 +91,7 @@ def project_all(args):
     else:
         args.v_print(3,'inliers/outliers projected')
     # merge the files
-    args.eigenvec = os.path.join(args.pca_path, args.name + '.eigenvec.txt')
+    args.eigenvec = os.path.join(args.pca_path, args.name + '_eigenvec.txt')
     if not os.path.isfile(args.eigenvec) or args.force:
         args.force = True
         
@@ -112,7 +112,8 @@ def project_all(args):
                     sample = entry[0]
                     assert sample not in rejected
                     o.write('\t'.join(entry) +'\n')
-               
+        subprocess.call(shlex.split(f"mv { args.pca_output_file+'.eigenvec.var'} {args.pca_output_file+'_eigenvec.var'}"))
+        
     else:
         args.v_print(3,'final eigenvec file already generated')
         return

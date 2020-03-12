@@ -8,7 +8,7 @@ etnoDownload = 'ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/working/20130
 
 
 def final_merge(args):
-    args.false_finns = os.path.join(args.pca_outlier_path, args.name + '_total_outliers.txt')
+    args.false_finns = os.path.join(args.pca_outlier_path, args.name + '_total_ethnic_outliers.txt')
     merge_files(args.false_finns,[args.finngen_eur_outliers,args.ethnic_pca_outliers])
     print(f'Total non-ethnic finns : {mapcount(args.false_finns)}')
 
@@ -44,22 +44,23 @@ def pca_round(args,remove_list = None):
     '''
     Performs PCA + outlier_detection and returns the list of outliers
     '''
-    local_path=  os.path.join(args.pca_outlier_path, '1k_pca/')
-    make_sure_path_exists(local_path)
-    remove = ''
-    if remove_list is not None:
-        remove_file = args.misc_path +  'remove.fam'
-        write_fam_samplelist(remove_file,remove_list)
-        remove =  f' --remove {remove_file}'
-
+    tg_pca_path=  os.path.join(args.pca_outlier_path, '1k_pca/')
+    make_sure_path_exists(tg_pca_path)
+   
     #######
     # PCA #
     #######
-    tg_pca_file = os.path.join(local_path,args.name)
+    tg_pca_file = os.path.join(tg_pca_path,args.name)
     if not os.path.isfile( tg_pca_file+ '.eigenval') or args.force:
         args.force = True 
         #individuals that need to be removed
-        print(remove)
+        remove = ''
+        if remove_list is not None:
+            remove_file = args.misc_path +  'remove.fam'
+            write_fam_samplelist(remove_file,remove_list)
+            remove =  f' --remove {remove_file}'             
+            print(remove)
+            
         cmd = f'plink2 --bfile {args.merged_plink_file} --read-freq  {args.merged_plink_file}.afreq {remove} --pca {args.pca_components} approx biallelic-var-wts --threads {args.cpus}  -out {tg_pca_file}'
         print(cmd)
         subprocess.call(shlex.split(cmd))
@@ -93,10 +94,10 @@ def finn_or_not(args):
     '''
     Determines if remaining samples belong to the FIN or EUR cluster.
     Returns:
-    It writes to args.eur_outlier_path the list of eur outliers
+    It writes to eur_outlier_path the list of eur outliers
     '''
-    args.eur_outlier_path = os.path.join(args.pca_outlier_path, "eur_pca/")
-    make_sure_path_exists(args.eur_outlier_path)
+    eur_outlier_path = os.path.join(args.pca_outlier_path, "eur_pca/")
+    make_sure_path_exists(eur_outlier_path)
 
     args.finngen_eur_outliers = os.path.join(args.pca_outlier_path,args.name +  '_eur_outliers.txt')
     if not os.path.isfile(args.finngen_eur_outliers) or args.force:
@@ -105,7 +106,7 @@ def finn_or_not(args):
         # build eur/fin/finngen fam files for projection
         batches = np.loadtxt(args.batches,dtype =str)
         euros,finngens =[],[]
-        eur,fin,finngen = args.eur_outlier_path + 'eur.txt', args.eur_outlier_path + 'fin.txt', args.eur_outlier_path + 'finngen.txt'
+        eur,fin,finngen = eur_outlier_path + 'eur.txt', eur_outlier_path + 'fin.txt', eur_outlier_path + 'finngen.txt'
         # load summary statistics from the last round of outlier detection
         outlier_samples = os.path.join(args.pca_outlier_path, '1k_pca/',args.name + '_outlier_samples.tsv')
         cols = [return_header(outlier_samples).index(elem) for elem in ['IID','outlier','SuperPops']]
@@ -135,7 +136,7 @@ def finn_or_not(args):
             #######################################################################
             # PCA with finngen final samples and project everyone onto that space #
             #######################################################################
-            pca_output_file = args.eur_outlier_path + 'finngen_' + args.name
+            pca_output_file = eur_outlier_path + 'finngen_' + args.name
             if not os.path.isfile(pca_output_file+ '.eigenval') or args.force:
 
                 print('Calculating finngen pca...')
@@ -153,7 +154,7 @@ def finn_or_not(args):
             ###################
             # EUR VS FIN PROB #
             ###################
-            eur_outliers = fin_eur_probs(args.eur_outlier_path,args.pc_filter,args.finn_prob_filter)
+            eur_outliers = fin_eur_probs(eur_outlier_path,args.pc_filter,args.finn_prob_filter)
 
         np.savetxt(args.finngen_eur_outliers,eur_outliers,fmt = '%s')
 
@@ -208,14 +209,15 @@ def project(args,tag,samples_keep,columns,pca_output_file):
     # define projection command
     columns = list(map(str,columns))
     cut_columns =  ','.join(columns)
-        
-    if not os.path.isfile(args.eur_outlier_path+ tag + '.sscore' ) or args.force:
+
+    eur_outlier_path = os.path.join(args.pca_outlier_path, "eur_pca/")
+    if not os.path.isfile(eur_outlier_path+ tag + '.sscore' ) or args.force:
         args.force = True 
         print(tag)
         keep = f' --keep {samples_keep}'
-        cmd = f'plink2 --bfile {args.merged_plink_file} {keep} --score {pca_output_file+".eigenvec.var"} 2 3 header-read no-mean-imputation  --score-col-nums {columns[0]}-{columns[-1]} --out {args.eur_outlier_path+tag}'
+        cmd = f'plink2 --bfile {args.merged_plink_file} {keep} --score {pca_output_file+".eigenvec.var"} 2 3 header-read no-mean-imputation  --score-col-nums {columns[0]}-{columns[-1]} --out {eur_outlier_path+tag}'
         subprocess.call(shlex.split(cmd))
-        cmd = f'cat {args.eur_outlier_path+tag + ".sscore"}  | cut -f2,{cut_columns} >  {args.eur_outlier_path+ tag + ".eigenvec"}'
+        cmd = f'cat {eur_outlier_path+tag + ".sscore"}  | cut -f2,{cut_columns} >  {eur_outlier_path+ tag + ".eigenvec"}'
         tmp_bash(cmd)
         
 

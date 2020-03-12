@@ -8,7 +8,7 @@ def filter_variants(args):
     """
     
     info_file,info_filter = args.info
-    filtered_snps= os.path.join(args.variants_path,'hq_snps.txt')
+    filtered_snps= os.path.join(args.variants_path,info_filter + '_hq_snps.txt')
     if not os.path.isfile(filtered_snps) or mapcount(filtered_snps) <1 or args.force:
         args.force = True
         cat_cmd = "zcat " if is_gz_file(info_file) else "cat "
@@ -26,17 +26,19 @@ def ld_pruning(args):
     """
     Iteratively ld prunes until target snpscount is reached.
     """
-
+    
+    
     
     pruned_variants = args.out_root +'.prune.in'
     if not os.path.isfile(pruned_variants) or mapcount(pruned_variants) < 1 or args.force:
-        cmd = f"plink2  --out {args.out_root} --read-freq  {args.bed.replace('.bed','.afreq')} --threads {cpus} --bfile {args.bed.replace('.bed','')} --extract {args.snplist} --indep-pairwise {' '.join(map(str,args.ld))} {args.pargs}"
+        cmd = f"plink2  --out {args.out_root} --read-freq  {args.bed.replace('.bed','.afreq')} --threads {cpus} --bfile {args.bed.replace('.bed','')} --extract {args.snplist} --indep-pairwise {' '.join(map(str,args.ld))} {args.pargs} "
         subprocess.call(shlex.split(cmd))
     print(f"Variants left after pruning: {mapcount(pruned_variants)}")
 
     if  mapcount(pruned_variants) < args.target_snps[0]:
-        print('Starting ld params too stringent')
+        print('Starting ld params too stringent.')
         return
+    
     elif args.target_snps[0] <= mapcount(pruned_variants) <= args.target_snps[1]:
         print('done.')
         return
@@ -47,6 +49,7 @@ def ld_pruning(args):
             args.force = True
             args.snplist = pruned_variants
             ld_pruning(args)
+             
 
 def trailing_zeros(x):
     """
@@ -64,6 +67,8 @@ def main(args):
     else:
         args.snplist = args.bed.replace('.bed','.bim')
 
+    args.original_snplist = args.snplist
+    args.original_ld = args.ld
     ld_pruning(args)
     
 
@@ -81,16 +86,15 @@ if __name__ == "__main__":
     parser.add_argument('--prefix',  type=str, help="Output prefix", required=True)
 
     # optional args
-    parser.add_argument('--pargs',type = str,help='extra plink args',default = '')
+    parser.add_argument('--pargs',type = str,help='extra plink args',default = ' --maf ')
     parser.add_argument('--force',help='Flag on whether to force run',action = "store_true")
-    parser.add_argument('--target-snps',type = int,nargs = 2,help = "Target number of snps after ld",default = [80000,120000])
-    parser.add_argument('--ld',nargs=4,type = float,metavar = ('SIZE','STEP','THRESHOLD','STEP2'),help ='size,step,threshold',default = [50,0.5,0.9,0.05])
+    parser.add_argument('--target-snps',type = int,nargs = 2,help = "Target number of snps after ld",default = [70000,90000])
+    parser.add_argument('--ld',nargs=4,type = float,metavar = ('SIZE','STEP','THRESHOLD','STEP2'),help ='size,step,threshold',default = [50,5,0.9,0.05])
     args = parser.parse_args()
     make_sure_path_exists(args.out_path)
     args.step = args.ld[-1]
     args.ld = args.ld[:-1]
-    
-    
+
     args.variants_path = os.path.join(args.out_path,'variants')
     make_sure_path_exists(args.variants_path)
     args.out_root = os.path.join(args.variants_path,args.prefix )

@@ -82,7 +82,7 @@ def kinship(args):
         print(f'{len(related_nodes)} native related')
         print(f'{len(related_greedy)} greedy related')
 
-        # return smaller set of related nodes from the two algorithms
+        # return smaller set of related nodes from the two algorithms       
         np.savetxt(args.related_individuals,min(related_greedy,related_nodes),fmt = '%s' )
 
 

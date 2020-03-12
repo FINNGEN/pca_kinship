@@ -237,7 +237,7 @@ def king_pedigree(args):
         o.write('|Kinship Type|Count|Description|\n')
         o.write('|--|--|--|\n')
         
-        desc ='Number of Finngen_mother Finngen_father couples who have at least one son in Finngen'
+        desc ='Number of Finngen_mother Finngen_father couples who have at least one child in Finngen'
         basic_cmd = f"""cat {pedigree_parents_file} |  awk '{{print $3"_"$4}}' | sort  """
         out_cmd = f" | wc -l >{tmp_file}"
         trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep -o '\\bF\w*_FG\w*'  {out_cmd}""" 
@@ -251,7 +251,7 @@ def king_pedigree(args):
         all_trios =  int(open(tmp_file).read())
         o.write('|' + '|'.join(['All Trios',str(all_trios),desc]) + '|\n')
 
-        desc = "Number of parent couples where only one is in finngen who have a finngen child"
+        desc = "Parent - child duos where the other parent is not in Finngen"
         duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o '\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'  {out_cmd} " 
         tmp_bash(duos_cmd)
         duos =  int(open(tmp_file).read())

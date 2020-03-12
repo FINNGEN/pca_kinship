@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 import os,unidecode
 from itertools import combinations
 from pca.color_dict import color_dict
-from utils import make_sure_path_exists,identify_separator,return_header,basic_iterator
+from utils import make_sure_path_exists,identify_separator,mapcount
 from collections import Counter
 
 import conda
@@ -109,7 +109,7 @@ def plot_final_pca(args):
 
     pca_pairwise =os.path.join(args.plot_path,args.name+ '_final_pca_pairwise.pdf')
     pca_plot =  os.path.join(args.plot_path,args.name+'_final_pca.pdf')
-    cohort_plot =  os.path.join(args.plot_path,args.name+'_cohorts_plot.pdf')
+    cohort_plot =  os.path.join(args.plot_path,args.name+'_cohorts.pdf')
 
     if not np.all(list(map(os.path.isfile,[pca_pairwise,pca_plot,cohort_plot]))):
         print('loading pc data...')
@@ -139,12 +139,20 @@ def return_cohorts_df(args):
         pc_data = pd.read_csv(args.eigenvec,sep = '\t',usecols = ['IID',"PC1",'PC2','PC3'], dtype = {pc: np.float64 for pc in ["PC1",'PC2','PC3']})
         print(len(pc_data))
         cohort_data = pd.read_csv(args.sample_info)
+
+        # mapping smallest batchets to other if too many
+        while len(set(cohort_data['COHORT'].values))  > max(color_dict.keys()):
+            count = Counter(cohort_data['COHORT'].values)
+            smallest_cohort = min(count,key = count.get)
+            cohort_data.loc[cohort_data['COHORT'] == smallest_cohort,'COHORT'] = 'Other'
+                
         print(len(cohort_data))
         pc_data = pc_data.merge(cohort_data,on = "IID")
         pc_data.to_csv(out_file,index=False)
         
     else:
         pc_data = pd.read_csv(out_file)
+        
     final_cohorts = set(pc_data['COHORT'])
     print(final_cohorts)
     return sorted(final_cohorts),pc_data
@@ -184,9 +192,8 @@ def return_fin_eur_df(args):
         pc_avg = ["PC1_AVG",'PC2_AVG','PC3_AVG']
         df_list = []
         eur_outliers = np.loadtxt(args.finngen_eur_outliers,dtype = str)
-
         for tag in ['eur','fin','finngen']:
-            score_file = args.eur_outlier_path + tag + '.sscore' 
+            score_file =  os.path.join(args.pca_outlier_path, "eur_pca/", tag + '.sscore' )
             df =  pd.read_csv(score_file,sep = '\t',usecols = ['IID'] + pc_avg, dtype = {pc: np.float64 for pc in pc_avg}).rename(columns = {pc: pc.replace("_AVG","") for pc in pc_avg})
             df["TAG"] = tag.upper()
             if tag =='finngen':
@@ -208,10 +215,12 @@ def plot_fin_eur_outliers(args):
     '''
     Plots eur/fin outlier detection results
     '''
-    
+
+
+    if mapcount(args.finngen_eur_outliers) == 0:
+        return
     outlier_plot_data = os.path.join(args.plot_path,'plot_data')
     make_sure_path_exists(outlier_plot_data)
-
     
     outliers_plot = os.path.join(args.plot_path,args.name+'_eur_outliers.pdf')
     outliers_2d = os.path.join(args.plot_path,args.name +'_eur_outliers_pairwise.pdf')
@@ -245,9 +254,10 @@ def return_outliers_df(args):
     """
     out_file = os.path.join(args.plot_path,'plot_data',"pc_ethnic.csv")
     if not os.path.isfile(out_file):
-        eigenvec_path =  args.tg_pca_file  + '.eigenvec'
+        tg_pca_file=  os.path.join(args.pca_outlier_path, '1k_pca/',args.name)       
+        eigenvec_path =  tg_pca_file  + '.eigenvec'
         #import metadata about samples
-        outlier_info = args.tg_pca_file + '_outlier_samples.tsv'
+        outlier_info = tg_pca_file + '_outlier_samples.tsv'
         samples = np.loadtxt(args.sample_fam,usecols = 1,dtype = str)
         superpops = set(np.loadtxt(args.data_path + 'superpop.csv',dtype = str,delimiter =',',usecols = 1))
         # read pc data
@@ -270,7 +280,6 @@ def return_outliers_df(args):
     print(final_tags)
     return sorted(final_tags),pc_data
            
-    return
     
     
 

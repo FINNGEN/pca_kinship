@@ -1,5 +1,5 @@
-from utils import pretty_print,file_exists,make_sure_path_exists,get_filepaths,merge_files,mapcount
-import multiprocessing,glob,argparse,os.path,subprocess,shlex,shutil
+from utils import pretty_print,file_exists,make_sure_path_exists,get_filepaths,merge_files,mapcount,Logger
+import multiprocessing,glob,argparse,os.path,subprocess,shlex,shutil,sys
 from pca import batches,tg,kinship,pca,plot,true_finns
 def main(args):
 
@@ -44,9 +44,36 @@ def main(args):
     plot.plot_first_round_outliers(args)
     plot.plot_fin_eur_outliers(args)
     plot.plot_map(args)
-    
-    return True
 
+    return True
+def release(args):
+
+    import glob
+    doc_path = os.path.join(args.out_path,'documentation')
+    make_sure_path_exists(doc_path)
+    for f in get_filepaths(doc_path): os.remove(f) # clean path else shutil.copy might fail
+    for pdf in glob.glob(os.path.join(args.plot_path,'*pdf')):
+        shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
+    outlier_pdf = os.path.join(args.pca_outlier_path, '1k_pca/',args.name + '_outlier_pcas.pdf')
+    shutil.copy(outlier_pdf,os.path.join(doc_path,os.path.basename(outlier_pdf)))
+    shutil.copy(args.log_file,os.path.join(doc_path,os.path.basename(args.log_file)))
+        
+    data_path = os.path.join(args.out_path,'data')
+    make_sure_path_exists(data_path)
+    for f in get_filepaths(data_path): os.remove(f) # clean path else shutil.copy might fail
+    for f in [args.inlier_file,args.outlier_file,args.rejected_file,args.final_samples,args.duplicates,args.false_finns,args.eigenvec,args.pca_output_file + '.eigenval',args.pca_output_file + '_eigenvec.var']:
+        shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
+    with open(args.log_file) as i:
+        summary = i.read()
+        
+    readme = os.path.join(args.data_path,'pca.README') 
+    with open(os.path.join(args.out_path,args.name + '_pca_readme'),'wt') as o, open(readme,'rt') as i:
+        word_map = {'[PREFIX]':args.name,'[SUMMARY]': summary,'[N_SNPS]':mapcount(args.bed.replace('.bed','.bim'))}
+        for line in i:
+            for kw in word_map:
+                if kw in line:
+                    line = line.replace(kw,str(word_map[kw]))
+            o.write(line)
 
 if __name__=='__main__':
     
@@ -103,26 +130,11 @@ if __name__=='__main__':
     args.success = False
     success = main(args)
     
-    log_file =os.path.join(args.out_path ,args.name + '.log' )
+    args.log_file =os.path.join(args.out_path ,args.name + '.log' )
     if success:
-        args.force = False
-        import contextlib
-        with open(log_file,'a') as f:
-            with contextlib.redirect_stdout(f):
-                main(args)
-
-
-    if args.release:
-        import glob
-        doc_path = os.path.join(args.out_path,'documentation')
-        make_sure_path_exists(doc_path)
-        for f in get_filepaths(doc_path): os.remove(f) # clean path else shutil.copy might fail
-        for pdf in glob.glob(os.path.join(args.plot_path,'*pdf')):
-            shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
-        shutil.copy(log_file,os.path.join(doc_path,os.path.basename(log_file)))
+        with  Logger(args.log_file,'wt'):
+            args.force = False
+            success = main(args)        
         
-        data_path = os.path.join(args.out_path,'data')
-        make_sure_path_exists(data_path)
-        for f in get_filepaths(data_path): os.remove(f) # clean path else shutil.copy might fail
-        for f in [args.inlier_file,args.outlier_file,args.rejected_file,args.final_samples,args.related_couples,args.duplicates,args.related_individuals,args.false_finns,args.eigenvec,args.pca_output_file + '.eigenval',args.pca_output_file + '.eigenvec.var']:
-            shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
+        if args.release:
+            release(args)

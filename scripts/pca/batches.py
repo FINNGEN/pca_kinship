@@ -1,6 +1,7 @@
 import os,subprocess,shlex
 import pandas as pd
 import numpy as np
+from collections import Counter
 from utils import mapcount,write_fam_samplelist,identify_separator,tmp_bash,mem_mib
 
 def batches(args):
@@ -14,25 +15,27 @@ def batches(args):
         args.force = True
         #save metadata to custom format
         sample_info = pd.read_csv(args.sample_info,sep = identify_separator(args.sample_info),usecols = ['BATCH','RELEASE','COHORT','FINNGENID']).rename(columns={"FINNGENID": "IID" })
-        # for axiomi batches, replease release as cohort
+        # for axiom batches, replease release as cohort
         axiom_mask =(sample_info['COHORT'] == 'Other') & sample_info['BATCH'].str.contains('Axiom')
-        sample_info.loc[axiom_mask,'COHORT'] = sample_info.loc[axiom_mask,'RELEASE']
-        
+        sample_info.loc[axiom_mask,'COHORT'] = sample_info.loc[axiom_mask,'RELEASE']             
+
         sample_info.loc[:,('BATCH','COHORT','IID')].to_csv(new_sample,index = False)
         args.v_print(1,sample_info.head())      
-
+        
+    # Replace args.sample_info with the filtered version
     args.sample_info = new_sample
-    sample_info = pd.read_csv(args.sample_info,sep = identify_separator(args.sample_info))
-   
+        
     # write batches summary
     args.cohorts = args.misc_path +'cohorts.txt'
     args.batches = args.misc_path +'batches.txt'
     if not os.path.isfile(args.cohorts) or args.force or not os.path.isfile(args.batches):
         args.force = True
+        sample_info = pd.read_csv(args.sample_info,sep = identify_separator(args.sample_info))
         batches = np.array(list(set(sample_info[['BATCH']].values.flatten())),dtype = str)
         np.savetxt(args.batches,batches,fmt = '%s' )
         cohorts = np.array(list(set(sample_info[['COHORT']].values.flatten())),dtype = str)
         np.savetxt(args.cohorts,cohorts,fmt = '%s' )
+        
     print(f"{mapcount(args.cohorts)} cohorts ")
     print(f"{mapcount(args.batches)} batches")
     
@@ -43,7 +46,7 @@ def batches(args):
         if args.test and mapcount(args.bed.replace('.bed','.fam')) > args.test :
             # filter fam file to random n samples
             tmp_bash(f"cat {args.bed.replace('.bed','.fam')} | shuf | head -n {args.test} > {args.sample_fam}")           
-            cmd = f"plink --bfile {args.bed.replace('.bed','')}  --freq --memory {int(mem_mib)} --make-bed --out {os.path.join(args.plink_path,args.name)} --keep {args.sample_fam}"
+            cmd = f"plink2 --bfile {args.bed.replace('.bed','')}  --freq --memory {int(mem_mib)} --make-bed --out {os.path.join(args.plink_path,args.name)} --keep {args.sample_fam}"
             subprocess.call(shlex.split(cmd))
             
         else:

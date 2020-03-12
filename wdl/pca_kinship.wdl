@@ -2,6 +2,7 @@ workflow pca_kinship {
 
     String prefix
     String docker
+    File min_pheno
     
     Array[String] chrom_list =  ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22"]
     
@@ -41,6 +42,7 @@ workflow pca_kinship {
         bim_file = merge_plink.out_plink_merged_bim,
         freq_file = merge_plink.out_plink_merged_freq,
         prefix = prefix,
+        pheno_file = min_pheno,
         docker = docker,
         }
 
@@ -53,19 +55,21 @@ workflow pca_kinship {
     call pca {
         input :
         docker = docker,
+        metadata = min_pheno,
+        prefix = prefix,
+        # kinship data
         bed_file = kinship.bed,
         fam_file = kinship.fam,
         bim_file = kinship.bim,
         freq_file = kinship.freq,
-        prefix = prefix,
         kin_file = kinship.kin,
-        duplicates = kinship.duplicates,
+        con_file = kinship.con,
+        # tg data
         tg_bed = filter_tg.bed,
         tg_fam = filter_tg.fam,
         tg_bim = filter_tg.bim,
         }
 }
-
 
 task pca {
 
@@ -83,7 +87,7 @@ task pca {
     # sample metadata
     File sample_file
     File kin_file
-    File duplicates
+    File con_file
     File metadata
     String prefix
     
@@ -93,31 +97,50 @@ task pca {
     String final_docker  = if pca_docker != "" then pca_docker else docker
     Int disk_size = ceil(size(bed_file,'GB'))*6 + ceil(size(tg_bed,'GB')) + 10
     Int mem = ceil(size(bed_file,'GB')) + 10
+    Int cpu
     
+    String out_path = '/cromwell_root/'
+    String out_file = prefix + '_output.log'
     command {
-        python3 /scripts/pca_main.py --bed ${bed_file} --tg-bed ${tg_bed}  -k ${kin_file}  -s ${sample_file}  --name ${prefix}  --meta ${metadata} --release  -o .
+        python3 /scripts/pca_main.py --bed ${bed_file} --tg-bed ${tg_bed}  -k ${kin_file}  -s ${sample_file}  --name ${prefix}  --meta ${metadata} --release  -o ${out_path} |& tee ${out_file}
+
+        mv ${out_file} /cromwell_root/documentation/
+        
     }
     
     runtime {
         docker: "${final_docker}"
-        cpu: 32
+        cpu: "${cpu}"
         disks: "local-disk " + "${disk_size}" + " HDD"
         bootDiskSizeGb: 20
         memory: "${mem} GB"
 	preemptible: 0
     }
     output {
-        File log = glob('/cromwell_root/documentation/${prefix}.log')
-        File cohort_plot = glob('/cromwell_root/documentation/${prefix}_cohorts_plots.pdf')
-        File ethnic_plot = glob('/cromwell_root/documentation/${prefix}_ethnic_outliers.pdf')
-        File ethnic_plot_2d = glob('/cromwell_root/documentation/${prefix}_ethnic_outliers_pairwise.pdf')
-        File eur_plot = glob('/cromwell_root/documentation/${prefix}_eur_outliers.pdf')
-        File eur_plot_2d = glob('/cromwell_root/documentation/${prefix}_eur_outliers_pairwise.pdf')
-        File pca_plot = glob('/cromwell_root/documentation/${prefix}_final_pca.pdf')
-        File pca_plot_2d = glob('/cromwell_root/documentation/${prefix}_final_pca_pairwise.pdf')
-        File geo_plot = glob('/cromwell_root/documentation/${prefix}_pc_map.pdf')
-        }
-
+        File readme = "${out_path}/${prefix}_kinship_readme"
+        #DATA
+        File inliers = '/cromwell_root/data/${prefix}_inliers.txt'
+        File outliers = '/cromwell_root/data/${prefix}_outliers.txt'
+        File duplicates= '/cromwell_root/data/${prefix}_duplicates.txt'
+        File rejected= '/cromwell_root/data/${prefix}_rejected.txt'
+        File non_finns= '/cromwell_root/data/${prefix}_total_ethnic_outliers.txt'
+        File final_samples= '/cromwell_root/data/${prefix}_final_samples.txt'
+        File eigenval= '/cromwell_root/data/${prefix}.eigenval.txt'
+        File eigenvec= '/cromwell_root/data/${prefix}.eigenvec.txt'
+        File eigenvec_var= '/cromwell_root/data/${prefix}_eigenvec.var'
+        #DOCUMENTATION 
+        File log = '/cromwell_root/documentation/${prefix}.log'
+        File output_log = '/cromwell_root/documentation/${prefix}_output.log'
+        File cohort_plot = '/cromwell_root/documentation/${prefix}_cohorts_plots.pdf'
+        File ethnic_plot = '/cromwell_root/documentation/${prefix}_ethnic_outliers.pdf'
+        File ethnic_plot_2d = '/cromwell_root/documentation/${prefix}_ethnic_outliers_pairwise.pdf'
+        File eur_plot = '/cromwell_root/documentation/${prefix}_eur_outliers.pdf'
+        File eur_plot_2d = '/cromwell_root/documentation/${prefix}_eur_outliers_pairwise.pdf'
+        File pca_plot = '/cromwell_root/documentation/${prefix}_final_pca.pdf'
+        File pca_plot_2d = '/cromwell_root/documentation/${prefix}_final_pca_pairwise.pdf'
+        File geo_plot = '/cromwell_root/documentation/${prefix}_pc_map.pdf'
+        File outliers_plot = '/cromwell_root/documentation/${prefix}_outlier_pcas.pdf'
+    }
 }
 
 task kinship{
@@ -136,8 +159,9 @@ task kinship{
 
     Int disk_size = ceil(size(bed_file,'GB'))*4 + 20
     Int mem = ceil(size(bed_file,'GB')) + 10
-
+    Int cpu 
     String out_path = '/cromwell_root/'
+    
     command {
         python3  /scripts/ped.py \
         --bed ${bed_file} \
@@ -150,7 +174,7 @@ task kinship{
     
     runtime {
         docker: "${final_docker}"
-        cpus: 64
+        cpu: "${cpu}"
         disks: "local-disk " + "${disk_size}" + " HDD"
         bootDiskSizeGb: 20
         memory: "${mem} GB"
@@ -166,7 +190,7 @@ task kinship{
         File freq = "${out_path}/data/${prefix}_kinship.afreq"
         File new_fam = "${out_path}/data/${prefix}_pedigree.fam" 
         File kin = "${out_path}/data/${prefix}.kin0"
-        File duplicates = "${out_path}/data/${prefix}.con"
+        File con = "${out_path}/data/${prefix}.con"
         #DOCUMENTATION
         File log = "${out_path}/documentation/${prefix}.log"
         File kinship_log = "${out_path}/documentation/${prefix}_kinship.log"
@@ -213,7 +237,6 @@ task filter_tg {
         }
 }
 
-
     
 task prune_panel {
 
@@ -225,7 +248,7 @@ task prune_panel {
     File info_score
     Float info_filter
     String plink_path
-    Int cpus
+    Int cpu
 
     String pargs
     String ld_params
@@ -252,7 +275,7 @@ task prune_panel {
 
     runtime {
         docker: "${final_docker}"
-        cpu: "${cpus}"
+        cpu: "${cpu}"
         disks: "local-disk " + "${disk_size}" + " HDD"
         bootDiskSizeGb: 20
         memory: "16 GB"
@@ -260,7 +283,6 @@ task prune_panel {
     }
 
     output {
-
         File snplist = "/cromwell_root/variants/${prefix}.prune.in"
         }
 }

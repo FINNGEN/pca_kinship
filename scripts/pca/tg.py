@@ -32,6 +32,7 @@ def subset_1k(args):
     '''
     args.new_tg = args.plink_path + '1k_new'
     if not os.path.isfile(args.new_tg +'.bed') or args.force:
+        print(args.new_tg +'.bed')
         args.force = True
         cmd = f'plink2  --bfile {args.tg_bed.replace(".bed","")}  --extract {args.bed.replace(".bed",".bim")} --memory {int(mem_mib)} --make-bed --out {args.new_tg} '
         print(cmd)
