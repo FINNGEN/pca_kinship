@@ -7,9 +7,9 @@ Imputed genotype data for the Analysis Team and collaborating partners. These da
 
 The pipeline takes as an input a list of pruned variants from the imputation panel and then proceeds to build a plink file with only the selected snps. In total [N_SNPS] snps are used in this run. The plink data set consists of [N_SAMPLES] samples.
 
-After this, king is run with flags --related --degree 2 and --duplicate. This returns the list of degree 2 couples as well as list of duplicate couples. This run consisted of:
+After this, king is run with flags --related --degree 3 and --duplicate. This returns the list of degree 3 couples as well as list of duplicate couples. This run consisted of:
 
-- [RELATED_COUPLES] degree 2 related couples
+- [RELATED_COUPLES] degree 3 related couples
 - [DUPLICATES] duplicates
 
 

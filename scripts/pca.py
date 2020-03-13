@@ -80,7 +80,7 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description="Returning final list of variants after info_score filter and ld pruning")
 
     parser.add_argument("--bed", type=file_exists, help = "Folder in which the merged plink file is stored", required = True)
-    parser.add_argument('-o',"--out_path",type = str, help = "folder in which to save the results", required = True)
+    parser.add_argument('-o',"--out_path",type = str, help = "Folder in which to save the results", required = True)
     parser.add_argument('--name',type = str,default = 'test',help = 'Name to append to output files ')
     parser.add_argument("--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
     parser.add_argument("--meta", type=file_exists, help =  "Path to file with regionofbirth info", required = False)
@@ -106,7 +106,7 @@ if __name__=='__main__':
     parser.add_argument('--force',action = 'store_true',help = 'Replaces files by force',default = False)
     parser.add_argument('--release',action = 'store_true',help = 'Flag for data release',default = False)
     parser.add_argument('-v', '--verbosity', action="count", 
-                        help="increase output verbosity (e.g., -vv is more than -v)")
+                        help="Increase output verbosity (e.g., -vv is more than -v)")
  
     args=parser.parse_args()
     args.name = args.name

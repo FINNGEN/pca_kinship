@@ -10,7 +10,7 @@ cpus = multiprocessing.cpu_count()
 ######################
 #---BUILD BED FILE---#
 ######################
-def build_bed(args):
+def build_bed(args,plink='plink'):
     """ 
     Builds bed with hq variants for kinship. This is the core data set used for the all kinship analysis.    
     """
@@ -22,7 +22,7 @@ def build_bed(args):
         # filter for only 30k samples 
         keep = f"--keep {args.fam}" if args.fam and mapcount(args.fam) > 100 else ""
         extract = f"--extract {args.extract}" if args.extract else ""
-        cmd = f"plink2 --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep}"
+        cmd = f"{plink} --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep}"
         print(cmd)
         subprocess.call(shlex.split(cmd))
     else:
@@ -47,7 +47,7 @@ def kinship(args):
     # RETURN RELATED AND PLOT FAMILIES
     if not os.path.isfile(args.kin_file) or mapcount(args.kin_file) < 1 or args.force:
         args.force = True
-        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate --degree 2 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot '
+        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot '
         print(cmd)
         with open(args.kinship_log_file,'wt') as f: subprocess.call(shlex.split(cmd),stdout = f)
         # produce R scripts, fix them and run them
@@ -343,7 +343,10 @@ def main(args):
     args.pedigree_path = os.path.join(args.out_path,'pedigree')
     make_sure_path_exists(args.pedigree_path)
     king_pedigree(args)
- 
+
+    pretty_print("BUILD BED PLINK2")
+    build_bed(args,'plink2')
+
     if args.release:
         release(args)
 

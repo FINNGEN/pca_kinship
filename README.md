@@ -29,7 +29,7 @@ The algorithm will keep reducing the r2 parameter at `STEP2` intervals until eit
 
 ## ped.py
 
-The pipeline takes as an input a list of pruned variants from the imputation panel and then proceeds to build a plink file with only the selected snps. After this, king is run with flags --related --degree 2 and --duplicate. This returns the list of degree 2 couples as well as list of duplicate couples. Next, king is run with the flags --build --degree 3. This reconstructs the pedigree structure of the samples in the bed file.
+The pipeline takes as an input a list of pruned variants from the imputation panel and then proceeds to build a plink file with only the selected snps. After this, king is run with flags --related --degree 3 and --duplicate. This returns the list of degree 3 couples as well as list of duplicate couples. Next, king is run with the flags --build --degree 3. This reconstructs the pedigree structure of the samples in the bed file.
 
 ```
 usage: ped.py [-h] [--extract EXTRACT] [--fam FAM] --pheno-file PHENO_FILE
@@ -51,7 +51,7 @@ optional arguments:
 
 ```
 
-First a subset is created if `FAM` is provided. Then KING with --related --degree 2 and --duplicate flags is run.
+First a subset is created if `FAM` is provided. Then KING with --related --degree 3 and --duplicate flags is run.
 This step also produces a plot of the distribution of kinship values.
 
 Then KING with --build option is run. This allows to create a new .fam file with updated sex and FIDs.
@@ -77,7 +77,7 @@ usage: prune.py [-h] [--info FILE VALUE | --extract EXTRACT] -b F -o OUT_PATH
 `--target` is the target number of snps
 `--ld` are the plink --indep-pairwise parameters plus the iterative step. 
 
-The algorithm will keep reducing the r2 parameter at `STEP2` intervals until either the number of snps is below target or it runs out of steps. At that point, the step that produced the closest number of snps to the target is returned nad `target` number of snps are randomly returned.
+The algorithm will keep reducing the r2 parameter at `STEP2` intervals until either the number of snps is below target or it runs out of steps. At that point, the step that produced the closest number of snps to the target is returned and `target` number of snps are randomly returned.
 
 ## ped.py
 

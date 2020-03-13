@@ -32,7 +32,7 @@ def kinship(args):
             subprocess.call(shlex.split(cmd))
         
         
-        deg_cmd = f"cut -f 2,4 {args.kin}  | sed -E 1d  > {args.related_couples}"
+        deg_cmd = f"cat  {args.kin}  | grep -vw 3rd |cut -f 2,4| sed -E 1d  > {args.related_couples}"
         tmp_bash(deg_cmd)
         # cuts IID of duplicates, returns uniques and generates duplicate.fam file
         dup_cmd = f"cut -f 2,4 {args.dup}" + """  | sed -E 1d |grep -o -E '\\w+' | sort -u -f >""" + args.duplicates

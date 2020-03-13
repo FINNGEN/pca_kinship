@@ -52,7 +52,7 @@ def batches(args):
         else:
             cmd = f"cat {args.bed.replace('.bed','.fam')}  > {args.sample_fam}"
             tmp_bash(cmd)
-
+        
     # UPDATE BED PATH IF RE-RUN
     if args.test:
         args.bed = os.path.join(args.plink_path,args.name) + '.bed'
