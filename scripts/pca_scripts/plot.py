@@ -10,7 +10,7 @@ import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 import os,unidecode
 from itertools import combinations
-from pca.color_dict import color_dict
+from pca_scripts.color_dict import color_dict
 from utils import make_sure_path_exists,identify_separator,mapcount
 from collections import Counter
 

@@ -1,6 +1,6 @@
 from utils import pretty_print,file_exists,make_sure_path_exists,get_filepaths,merge_files,mapcount,Logger
 import multiprocessing,glob,argparse,os.path,subprocess,shlex,shutil,sys
-from pca import batches,tg,kinship,pca,plot,true_finns
+from pca_scripts import batches,tg,kinship,pca,plot,true_finns
 def main(args):
 
     
@@ -101,8 +101,8 @@ if __name__=='__main__':
     parser.add_argument('--pc-filter',type = int,help = 'Number of pcs on which to perform the outlier detection method',default = 3)
     
     #optional tags
-    parser.add_argument('--test',type = int,default =0,help = 'Flag for quick pca_outlier. For testing purposes. It only keeps 10k samples.')
-    parser.add_argument("--cpus",type = int, help = "number of cpus to use", default =  multiprocessing.cpu_count())
+    parser.add_argument('--test',type = int,default =0,help = 'Flag for quick pca_outlier. For testing purposes. It only keeps 10k sample.')
+    parser.add_argument("--cpus",type = int, help = "Number of cpus to use (default available cpus)", default =  multiprocessing.cpu_count())
     parser.add_argument('--force',action = 'store_true',help = 'Replaces files by force',default = False)
     parser.add_argument('--release',action = 'store_true',help = 'Flag for data release',default = False)
     parser.add_argument('-v', '--verbosity', action="count", 

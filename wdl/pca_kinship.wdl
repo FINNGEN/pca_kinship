@@ -102,7 +102,15 @@ task pca {
     String out_path = '/cromwell_root/'
     String out_file = prefix + '_output.log'
     command {
-        python3 /scripts/pca_main.py --bed ${bed_file} --tg-bed ${tg_bed}  -k ${kin_file}  -s ${sample_file}  --name ${prefix}  --meta ${metadata} --release  -o ${out_path} |& tee ${out_file}
+        python3 /scripts/pca.py \
+	--bed ${bed_file} \
+	--tg-bed ${tg_bed} \
+	---kin ${kin_file} \
+	--sample-info ${sample_file} \
+	--name ${prefix}\
+	--meta ${metadata} \
+	--release  \
+	-o ${out_path} |& tee ${out_file}
 
         mv ${out_file} /cromwell_root/documentation/
         
