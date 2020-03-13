@@ -352,17 +352,16 @@ if __name__ == "__main__":
 
     
     parser.add_argument("--extract", type=file_exists, help =  "Path to list of variants to include",default = False)
-    parser.add_argument("--fam", type=file_exists, help =  "fam file to filter down")
-    parser.add_argument("-f", '--pheno-file', metavar='F', type=file_exists, help="Phenotype filepath",required = True)
-    parser.add_argument("-b", '--bed', metavar='F', type=file_exists, help="BED filepath", required=True)
-    parser.add_argument('-o', "--out-path", type=str, help="folder in which to save the results", required=True)
+    parser.add_argument("--fam", type=file_exists, help =  "Optional .fam file to subset individuals")
+    parser.add_argument('--pheno-file', type=file_exists, help="Phenotype filepath. Needs to contain SEX column",required = True)
+    parser.add_argument('--bed', type=file_exists, help="BED filepath", required=True)
+    parser.add_argument("--out-path", type=str, help="folder in which to save the results", required=True)
     parser.add_argument('--prefix',  type=str, help="Output prefix", required=True)
     parser.add_argument('--force',help='Flag on whether to force run',action = "store_true")
-    parser.add_argument('--release',help='Flag on whether to force run',action = "store_true")
+    parser.add_argument('--release',help='Flag to structure output for release',action = "store_true")
     
     args = parser.parse_args()
     make_sure_path_exists(args.out_path)
-
     main(args)
     
 

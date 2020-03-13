@@ -19,14 +19,13 @@ def kinship(args):
     args.related_couples = os.path.join(args.kinPath,args.name  +'_related_couples_' + str(args.degree) + '.txt')
     args.duplicates = os.path.join(args.kinPath,args.name  +'_duplicates.txt')
     if not os.path.isfile(args.related_couples) or not os.path.isfile(args.duplicates) or args.force:
-
         if not args.kin:
             args.kin = os.path.join(args.kinPath,args.name + '.kin0')
             
         if not args.dup:
             args.dup = args.kin.replace('kin0','con')
 
-        if not os.path.isfile(args.dup) or not os.path.isfile(args.kin) or args.force:
+        if not os.path.isfile(args.dup) or not os.path.isfile(args.kin):
             download_king()
             print('generating kinship relations file to ',args.kin)
             cmd = f'king -b {args.bed}  --related --degree 2 --duplicate --cpus {args.cpus} --prefix {args.kin.split(".kin0")[0]}'

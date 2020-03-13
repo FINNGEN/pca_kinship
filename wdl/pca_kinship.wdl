@@ -117,7 +117,7 @@ task pca {
 	preemptible: 0
     }
     output {
-        File readme = "${out_path}/${prefix}_kinship_readme"
+        File readme = "${out_path}/${prefix}_pca_readme"
         #DATA
         File inliers = '/cromwell_root/data/${prefix}_inliers.txt'
         File outliers = '/cromwell_root/data/${prefix}_outliers.txt'
@@ -125,8 +125,8 @@ task pca {
         File rejected= '/cromwell_root/data/${prefix}_rejected.txt'
         File non_finns= '/cromwell_root/data/${prefix}_total_ethnic_outliers.txt'
         File final_samples= '/cromwell_root/data/${prefix}_final_samples.txt'
-        File eigenval= '/cromwell_root/data/${prefix}.eigenval.txt'
-        File eigenvec= '/cromwell_root/data/${prefix}.eigenvec.txt'
+        File eigenval= '/cromwell_root/data/${prefix}_eigenval.txt'
+        File eigenvec= '/cromwell_root/data/${prefix}_eigenvec.txt'
         File eigenvec_var= '/cromwell_root/data/${prefix}_eigenvec.var'
         #DOCUMENTATION 
         File log = '/cromwell_root/documentation/${prefix}.log'
@@ -150,7 +150,6 @@ task kinship{
     File fam_file
     File freq_file
     File pheno_file
-    File sub_fam
 
     String docker
     String kinship_docker
@@ -165,8 +164,7 @@ task kinship{
     command {
         python3  /scripts/ped.py \
         --bed ${bed_file} \
-        --fam   ${sub_fam} \
-        -o ${out_path} \
+        --out-path ${out_path} \
         --prefix ${prefix} \
         --pheno-file ${pheno_file} \
         --release
@@ -213,9 +211,12 @@ task filter_tg {
     
     String docker
     String prefix
+    Int cpu
+    Int mem
+    
     Int disk_size =  ceil(size(tg_bed,'GB'))*4 + 10
     String out_root = prefix + "_1kg"
-    
+
     command {
         plink2 --bfile ${sub(tg_bed,'.bed','')} --extract ${snplist}  \
         --make-bed --out ${out_root}
@@ -223,10 +224,10 @@ task filter_tg {
 
     runtime {
         docker: "${docker}"
-        cpu: 32
+        cpu: "${cpu}"
         disks: "local-disk " + "${disk_size}" + " HDD"
         bootDiskSizeGb: 20
-        memory: "16 GB"
+        memory: "${mem} GB"
 	preemptible: 0
     }
 
@@ -249,10 +250,11 @@ task prune_panel {
     Float info_filter
     String plink_path
     Int cpu
+    Int mem
 
     String pargs
     String ld_params
-    String target_snps
+    String target
     
     File bed_file = plink_path + ".bed"
     File bim_file = plink_path + ".bim"
@@ -267,9 +269,9 @@ task prune_panel {
         --info ${info_score} ${info_filter} \
         --prefix ${prefix} \
         --ld ${ld_params} \
-        --target-snps ${target_snps} \
+        --target ${target} \
         --pargs ${pargs} \
-        -o "/cromwell_root/" \ 
+        --out-path "/cromwell_root/" \ 
         }
 
 
@@ -278,12 +280,12 @@ task prune_panel {
         cpu: "${cpu}"
         disks: "local-disk " + "${disk_size}" + " HDD"
         bootDiskSizeGb: 20
-        memory: "16 GB"
+        memory: "${mem} GB"
 	preemptible: 1
     }
 
     output {
-        File snplist = "/cromwell_root/variants/${prefix}.prune.in"
+        File snplist = "/cromwell_root/${prefix}.prune.in"
         }
 }
 
@@ -299,6 +301,7 @@ task merge_plink {
     String pargs
     Int total_size
     Int mem
+    Int cpu
     
     String merge_docker
     String docker
@@ -315,7 +318,7 @@ task merge_plink {
 
     runtime {
         docker: "${final_docker}"
-	cpu: 16
+	cpu: "${cpu}"
         disks: "local-disk " + "${disk_size}" + " HDD"
         bootDiskSizeGb: 20
         memory:  "${mem}" + " GB"

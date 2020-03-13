@@ -79,16 +79,16 @@ if __name__=='__main__':
     
     parser=argparse.ArgumentParser(description="Returning final list of variants after info_score filter and ld pruning")
 
-    parser.add_argument('-b',"--bed", type=file_exists, help = "Folder in which the merged plink file is stored", required = True)
+    parser.add_argument("--bed", type=file_exists, help = "Folder in which the merged plink file is stored", required = True)
     parser.add_argument('-o',"--out_path",type = str, help = "folder in which to save the results", required = True)
     parser.add_argument('--name',type = str,default = 'test',help = 'Name to append to output files ')
-    parser.add_argument('-s',"--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
-    parser.add_argument('-m',"--meta", type=file_exists, help =  "Path to file with regionofbirth info", required = False)
+    parser.add_argument("--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
+    parser.add_argument("--meta", type=file_exists, help =  "Path to file with regionofbirth info", required = False)
 
     #KINSHIP
     parser.add_argument('--degree',type=int,help='Degree for Kinship',default = 2)
-    parser.add_argument('-k',"--kin", type=file_exists, help = "File with king related individuals")
-    parser.add_argument('-d',"--dup", type=file_exists, help = "File with king duplicates")
+    parser.add_argument("--kin", type=file_exists, help = "File with king related individuals")
+    parser.add_argument("--dup", type=file_exists, help = "File with king duplicates")
 
     #PCA
     parser.add_argument('--pca-components',type=int,help='Components needed for pca',default = 20)
@@ -101,7 +101,6 @@ if __name__=='__main__':
     parser.add_argument('--pc-filter',type = int,help = 'Number of pcs on which to perform the outlier detection method',default = 3)
     
     #optional tags
-    parser.add_argument('--exclude',type = file_exists,help ='list of snps to exclude',default = None)
     parser.add_argument('--test',type = int,default =0,help = 'Flag for quick pca_outlier. For testing purposes. It only keeps 10k samples.')
     parser.add_argument("--cpus",type = int, help = "number of cpus to use", default =  multiprocessing.cpu_count())
     parser.add_argument('--force',action = 'store_true',help = 'Replaces files by force',default = False)
