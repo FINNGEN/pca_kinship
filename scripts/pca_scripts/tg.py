@@ -2,9 +2,6 @@ import os, shlex,subprocess
 from utils import mem_mib,mapcount
 
 
-#thousand genome project downloads
-tg_download = 'ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/supporting/GRCh38_positions/'
-tg_root,tg_ending  = 'ALL.chr','_GRCh38.genotypes.20170504'
 
 def merge_1k(args):
     '''

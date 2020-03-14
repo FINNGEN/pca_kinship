@@ -14,25 +14,14 @@ def build_bed(args,plink='plink'):
     """ 
     Builds bed with hq variants for kinship. This is the core data set used for the all kinship analysis.    
     """
-
- 
-    args.kinship_bed =os.path.join(args.plink_path,args.prefix + '_kinship.bed')
+     args.kinship_bed =os.path.join(args.plink_path,args.prefix + '_kinship.bed')
     if not os.path.isfile(args.kinship_bed) or not mapcount(args.kinship_bed) or args.force:
         args.force = True
-        # filter for only 30k samples 
         keep = f"--keep {args.fam}" if args.fam and mapcount(args.fam) > 100 else ""
         extract = f"--extract {args.extract}" if args.extract else ""
-        cmd = f"{plink} --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep}"
+        cmd = f"{plink} --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep} --freq"
         print(cmd)
         subprocess.call(shlex.split(cmd))
-    else:
-        print('bed file already generated')
-    freq_file = args.kinship_bed.replace('.bed','.afreq')
-    if not os.path.isfile(freq_file) or not mapcount(freq_file) :
-        cmd = f"plink2 --bfile {args.kinship_bed.replace('.bed','')} --freq  --threads {cpus}  --out {args.kinship_bed.replace('.bed','')}"
-        print(cmd)
-        subprocess.call(shlex.split(cmd))
-
     
 ######################
 #------KINSHIP-------#

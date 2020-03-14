@@ -3,15 +3,13 @@ import networkx as nx
 import numpy as np
 import os.path,shlex,shutil
 
-
-
 def kinship(args):
     '''
     Builds a new plink file for king and performs king analysis
     Returns:
     args.kin (if missings) : output of KING --related
     args.duplicates : list of duplicates
-    args.related_couples : .tsv file with related couples
+    args.related_couples : tsv file with related couples
     args.related_individuals : list of related individuals
     '''
     
@@ -20,22 +18,17 @@ def kinship(args):
     args.duplicates = os.path.join(args.kinPath,args.name  +'_duplicates.txt')
     if not os.path.isfile(args.related_couples) or not os.path.isfile(args.duplicates) or args.force:
         if not args.kin:
-            args.kin = os.path.join(args.kinPath,args.name + '.kin0')
-            
-        if not args.dup:
-            args.dup = args.kin.replace('kin0','con')
-
-        if not os.path.isfile(args.dup) or not os.path.isfile(args.kin):
-            download_king()
+            args.kin = os.path.join(args.kinPath,args.name + '.kin0')          
+       
+        if not os.path.isfile(args.kin):
             print('generating kinship relations file to ',args.kin)
-            cmd = f'king -b {args.bed}  --related --degree 2 --duplicate --cpus {args.cpus} --prefix {args.kin.split(".kin0")[0]}'
+            cmd = f'king -b {args.bed}  --related --degree 2  --cpus {args.cpus} --prefix {args.kin.split(".kin0")[0]}'
             subprocess.call(shlex.split(cmd))
-        
-        
+                
         deg_cmd = f"cat  {args.kin}  | grep -vw 3rd |cut -f 2,4| sed -E 1d  > {args.related_couples}"
         tmp_bash(deg_cmd)
         # cuts IID of duplicates, returns uniques and generates duplicate.fam file
-        dup_cmd = f"cut -f 2,4 {args.dup}" + """  | sed -E 1d |grep -o -E '\\w+' | sort -u -f >""" + args.duplicates
+        dup_cmd = f"cat {args.kin} | grep Dup/MZ | cut -f 2,4 |grep -o -E '\\w+' | sort -u -f >""" + args.duplicates
         print(dup_cmd)
         tmp_bash(dup_cmd)
     else:
@@ -96,7 +89,7 @@ def sanity_check(graph,nodes):
     Given a list of nodes it makes sure that the algorithms are working properly.
     That is that the subgraph induced by the remainign nodes does not contain edges.
     '''
-
+    
     assert graph.subgraph(nodes).number_of_edges() == 0
 
     
@@ -107,53 +100,23 @@ def greedy_algorithm(g):
     
     degrees = dict(g.degree())
     removedNodes = []
-    starting_edges = g.number_of_edges()
-
     edges = g.number_of_edges() 
     while edges >0:
         #find highest degree node
         maxNode = max(degrees, key=degrees.get)
-        for neighbor in g[maxNode]:
-            degrees[neighbor] -= 1
         removedNodes.append(maxNode)
         
+        for neighbor in g[maxNode]:
+            degrees[neighbor] -= 1
+            
         #delete node from degree dict and from network
         del degrees[maxNode]
         g.remove_node(maxNode)
+        
         # update number of edges
         edges =g.number_of_edges()
-        #progressBar(starting_edges - edges, starting_edges, bar_length=20)
         
     return removedNodes
-
-
-def download_king():
-    #king download
-    kingDownload = 'http://people.virginia.edu/~wc9c/KING/Linux-king.tar.gz'
-
-    king = shutil.which('king')
-    if king is None:
-  
-        print('King not present, downloading ...')
-        cmd = 'wget -O king.tar.gz ' + kingDownload
-        subprocess.call(shlex.split(cmd))
-        
-        print('Extracting...')
-        cmd = 'tar -xzvf king.tar.gz -C . '
-        subprocess.call(shlex.split(cmd))
-        cmd =  'mv king /usr/local/bin'
-        
-        try:
-            subprocess.call(shlex.split(cmd))
-        except:
-            cmd = 'sudo ' + cmd
-            subprocess.call(shlex.split(cmd))
-        cmd = 'rm  ./king.tar.gz '
-        subprocess.call(shlex.split(cmd))
-        print('Done.')
-        
-        subprocess.call('king')
- 
 
 def connected_component_subgraphs(G):
     for c in nx.connected_components(G):

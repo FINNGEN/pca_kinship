@@ -88,7 +88,6 @@ if __name__=='__main__':
     #KINSHIP
     parser.add_argument('--degree',type=int,help='Degree for Kinship',default = 2)
     parser.add_argument("--kin", type=file_exists, help = "File with king related individuals")
-    parser.add_argument("--dup", type=file_exists, help = "File with king duplicates")
 
     #PCA
     parser.add_argument('--pca-components',type=int,help='Components needed for pca',default = 20)

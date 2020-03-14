@@ -25,7 +25,7 @@ optional arguments:
 
 ```
 
-The algorithm will keep reducing the r2 parameter at `STEP2` intervals until either the number of snps is below target or it runs out of steps. At that point, the step that produced the closest number of snps to the target is returned nad `target` number of snps are randomly returned.
+The algorithm will keep reducing the r2 parameter at `STEP2` intervals until either the number of snps is below target or it runs out of steps. At that point, the step that produced the closest number of snps to the target is returned and `target` number of snps are randomly returned.
 
 ## ped.py
 
@@ -57,39 +57,3 @@ This step also produces a plot of the distribution of kinship values.
 Then KING with --build option is run. This allows to create a new .fam file with updated sex and FIDs.
 
 ## pca.py
-
-# pca_kinship
-PCA and Kinship pipeline
-
-## prune.py
-
-Script that iteratively prunes a plink data set until a `target` number of snps is reached. 
-```
-usage: prune.py [-h] [--info FILE VALUE | --extract EXTRACT] -b F -o OUT_PATH
-                --prefix PREFIX [--pargs PARGS] [--force] [--target TARGET]
-                [--ld SIZE STEP THRESHOLD STEP2]
-```
-
-`--extract` allows to pass an inital set of variants to start from
-`--info FILE VALUE` is a tsv file with snpid and info score from each batch. In this case variants with minimum info score smaller than `VALUE` are filterd out initially
-
-`--pargs` are extra plink arguments to be passed (e.g. --maf --mac etc.)
-`--target` is the target number of snps
-`--ld` are the plink --indep-pairwise parameters plus the iterative step. 
-
-The algorithm will keep reducing the r2 parameter at `STEP2` intervals until either the number of snps is below target or it runs out of steps. At that point, the step that produced the closest number of snps to the target is returned and `target` number of snps are randomly returned.
-
-## ped.py
-
-## pca.py
-# pca_kinship
-PCA and Kinship pipeline
-
-## prune.py
-
-```
-usage: prune.py [-h] [--info FILE VALUE | --extract EXTRACT] -b F -o OUT_PATH
-                --prefix PREFIX [--pargs PARGS] [--force] [--target TARGET]
-                [--ld SIZE STEP THRESHOLD STEP2]
-```
-

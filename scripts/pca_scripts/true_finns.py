@@ -4,9 +4,6 @@ from scipy.spatial.distance import cdist
 from scipy.stats import chi2
 import os,shlex
 
-etnoDownload = 'ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/working/20130606_sample_info/20130606_sample_info.txt'
-
-
 def final_merge(args):
     args.false_finns = os.path.join(args.pca_outlier_path, args.name + '_total_ethnic_outliers.txt')
     merge_files(args.false_finns,[args.finngen_eur_outliers,args.ethnic_pca_outliers])
@@ -240,10 +237,7 @@ def build_superpop(args):
 
         # sample info for tg
         tg_pop = os.path.join(args.data_path,'20130606_sample_info.txt')
-        if not os.path.isfile(tg_pop):
-            cmd = f'wget {etnoDownload} -P {args.data_path}'
-            subprocess.call(shlex.split(cmd))
-
+   
         # get pop info of each samples
         cols = [return_header(tg_pop).index(elem) for elem in ['Sample','Population']]
         pop_dict = {sample:pop for sample,pop in basic_iterator(tg_pop,columns = cols)}

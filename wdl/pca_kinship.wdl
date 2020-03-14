@@ -63,7 +63,6 @@ workflow pca_kinship {
         bim_file = kinship.bim,
         freq_file = kinship.freq,
         kin_file = kinship.kin,
-        con_file = kinship.con,
         # tg data
         tg_bed = filter_tg.bed,
         tg_fam = filter_tg.fam,
@@ -87,7 +86,6 @@ task pca {
     # sample metadata
     File sample_file
     File kin_file
-    File con_file
     File metadata
     String prefix
     
@@ -105,12 +103,12 @@ task pca {
         python3 /scripts/pca.py \
 	--bed ${bed_file} \
 	--tg-bed ${tg_bed} \
-	---kin ${kin_file} \
+	--kin ${kin_file} \
 	--sample-info ${sample_file} \
-	--name ${prefix}\
+	--name ${prefix} \
 	--meta ${metadata} \
-	--release  \
-	-o ${out_path} |& tee ${out_file}
+	-o ${out_path} \
+	--release  |& tee ${out_file}
 
         mv ${out_file} /cromwell_root/documentation/
         
@@ -133,13 +131,13 @@ task pca {
         File rejected= '/cromwell_root/data/${prefix}_rejected.txt'
         File non_finns= '/cromwell_root/data/${prefix}_total_ethnic_outliers.txt'
         File final_samples= '/cromwell_root/data/${prefix}_final_samples.txt'
-        File eigenval= '/cromwell_root/data/${prefix}_eigenval.txt'
+        File eigenval= '/cromwell_root/data/${prefix}.eigenval'
         File eigenvec= '/cromwell_root/data/${prefix}_eigenvec.txt'
         File eigenvec_var= '/cromwell_root/data/${prefix}_eigenvec.var'
         #DOCUMENTATION 
         File log = '/cromwell_root/documentation/${prefix}.log'
         File output_log = '/cromwell_root/documentation/${prefix}_output.log'
-        File cohort_plot = '/cromwell_root/documentation/${prefix}_cohorts_plots.pdf'
+        File cohort_plot = '/cromwell_root/documentation/${prefix}_cohorts.pdf'
         File ethnic_plot = '/cromwell_root/documentation/${prefix}_ethnic_outliers.pdf'
         File ethnic_plot_2d = '/cromwell_root/documentation/${prefix}_ethnic_outliers_pairwise.pdf'
         File eur_plot = '/cromwell_root/documentation/${prefix}_eur_outliers.pdf'
@@ -364,7 +362,7 @@ task chrom_convert {
     
     command <<<
     plink2 --vcf ${cFile} \
-    ${pargs} --vcf-half-call h \
+    ${pargs} \
     --memory ${plink_mem}  --extract ${variants} \
     --make-bed --out ${chrom} 
     >>>
