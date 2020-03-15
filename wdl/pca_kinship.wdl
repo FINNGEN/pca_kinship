@@ -40,7 +40,6 @@ workflow pca_kinship {
         bed_file = merge_plink.out_plink_merged_bed,
         fam_file = merge_plink.out_plink_merged_fam,
         bim_file = merge_plink.out_plink_merged_bim,
-        freq_file = merge_plink.out_plink_merged_freq,
         prefix = prefix,
         pheno_file = min_pheno,
         docker = docker,
@@ -154,7 +153,6 @@ task kinship{
     File bed_file
     File bim_file
     File fam_file
-    File freq_file
     File pheno_file
 
     String docker
@@ -296,7 +294,6 @@ task prune_panel {
 }
 
 
-
 task merge_plink {
 
     Array[File] bed_files 
@@ -318,8 +315,7 @@ task merge_plink {
 
     command <<<
     cat ${write_lines(bed_files)} | sed -e 's/.bed//g' > merge_list.txt
-    plink --merge-list merge_list.txt ${pargs} --memory ${plink_mem} --make-bed --out ${name}
-    plink2 --bfile ${name} --keep-allele-order --freq --out ${name}
+    plink --merge-list merge_list.txt ${pargs} --keep-allele-order --memory ${plink_mem} --make-bed --out ${name} 
     >>>
 
     runtime {
@@ -336,7 +332,6 @@ task merge_plink {
        File out_plink_merged_bed  = "${name}.bed"
        File out_plink_merged_bim  = "${name}.bim"
        File out_plink_merged_fam  = "${name}.fam"
-       File out_plink_merged_freq = "${name}.afreq"
     }
 }
 

@@ -22,7 +22,6 @@ def filter_variants(args):
     print(f"{mapcount(filtered_snps)} hq snps")
     return filtered_snps
 
-
 def ld_pruning(args):
     """
     Iteratively ld prunes until target snpscount is reached.

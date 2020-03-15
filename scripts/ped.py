@@ -14,7 +14,7 @@ def build_bed(args,plink='plink'):
     """ 
     Builds bed with hq variants for kinship. This is the core data set used for the all kinship analysis.    
     """
-     args.kinship_bed =os.path.join(args.plink_path,args.prefix + '_kinship.bed')
+    args.kinship_bed =os.path.join(args.plink_path,args.prefix + '_kinship.bed')
     if not os.path.isfile(args.kinship_bed) or not mapcount(args.kinship_bed) or args.force:
         args.force = True
         keep = f"--keep {args.fam}" if args.fam and mapcount(args.fam) > 100 else ""
