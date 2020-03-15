@@ -7,7 +7,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update && apt-get install mercurial --yes && \
 apt-get install gcc zlib1g-dev wget make libcurl4-openssl-dev libbz2-dev liblzma-dev \
-bzip2 curl unzip gawk python make gcc g++ libz-dev libbz2-dev liblzma-dev  littler libssl-dev  software-properties-common ghostscript --yes 
+bzip2 curl unzip gawk python make gcc g++ libz-dev libbz2-dev liblzma-dev  littler libssl-dev  software-properties-common ghostscript parallel  --yes 
 
 RUN apt-get remove r-base-core --yes
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 
@@ -43,6 +43,9 @@ RUN wget http://s3.amazonaws.com/plink2-assets/alpha2/plink2_linux_x86_64.zip &&
 RUN wget http://people.virginia.edu/~wc9c/KING/Linux-king.tar.gz && tar -xzvf Linux-king.tar.gz -C /usr/local/bin && rm Linux*king*.tar.gz
 
 ENV PATH "/opt/conda/bin:$PATH"
+
+RUN wget https://github.com/samtools/bcftools/releases/download/1.10.2/bcftools-1.10.2.tar.bz2 && tar -xvjf bcftools-1.10.2.tar.bz2 && cd bcftools-1.10.2 && \
+./configure && make && make install && cd ..  && rm  bcftools-1.10.2.tar.bz2 && export BCFTOOLS_PLUGINS=~/bcftools-1.10.2/plugins/
 
 ADD scripts ../scripts
 ADD data ../data

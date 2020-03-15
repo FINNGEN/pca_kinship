@@ -72,7 +72,7 @@ def pca_round(args,remove_list = None):
         args.force = True 
         print('generating outliers at ' + tg_pca_file)
         cmd = f' -f {tg_pca_file+".eigenvec"} -e {tg_pca_file+".eigenval"} -s {args.annot_pop} --n_iterations {iterations}  -o {tg_pca_file}'
-        tmp_cmd  =f"Rscript {os.path.join(args.rootPath,'scripts/pca_outlier_detection/scripts/classify_outliers.R')} {cmd} "
+        tmp_cmd  =f"Rscript {os.path.join(args.parent_path,'scripts/pca_outlier_detection/scripts/classify_outliers.R')} {cmd} "
         subprocess.call(shlex.split(tmp_cmd))
 
            

@@ -39,7 +39,7 @@
     "pca_kinship.pca.mem": 32,
 
 #DOCKERS
-    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test",
+    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r5",
     
     #prune
     #"pca_kinship.prune_panel.prune_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-prune",

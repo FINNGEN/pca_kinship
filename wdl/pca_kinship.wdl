@@ -21,9 +21,10 @@ workflow pca_kinship {
            variants = prune_panel.snplist           
        }     
     }
-     
+
     # gathers the results from the file_size scatter
     call sum {input: values = chrom_convert.file_size,docker = docker}
+    
     # merge vcf files
     call merge_plink {
         input:
@@ -32,7 +33,7 @@ workflow pca_kinship {
 	fam_files = chrom_convert.fam,
         docker = docker,
         name = prefix,
-        total_size  = ceil(sum.out)
+        total_size = sum.out
         }
         
     call kinship{
@@ -278,7 +279,6 @@ task prune_panel {
         --out-path "/cromwell_root/" \ 
         }
 
-
     runtime {
         docker: "${final_docker}"
         cpu: "${cpu}"
@@ -302,14 +302,15 @@ task merge_plink {
     
     String name
     String pargs
-    Int total_size
+
     Int mem
     Int cpu
     
     String merge_docker
     String docker
     String final_docker = if merge_docker != ""  then merge_docker else docker
-    
+
+    Int total_size 
     Int disk_size = total_size*4 + 20
     Int plink_mem = mem*1000 - 2000
 
@@ -325,7 +326,6 @@ task merge_plink {
         bootDiskSizeGb: 20
         memory:  "${mem}" + " GB"
         preemptible: 0
-
     }
 
     output {    
@@ -350,16 +350,21 @@ task chrom_convert {
     # get path to vcf
     String chromPath
     File cFile = sub(chromPath,"CHROM",chrom)
-    Int chrom_size = ceil(size(cFile,"GB")) 
-    Int disk_size = chrom_size*4  + 20
+    File tabix = cFile + '.tbi'
+    Int disk_size = ceil(size(cFile,"GB")) *4  + 20
     Int plink_mem = mem*1000 - 2000
-
     
     command <<<
-    plink2 --vcf ${cFile} \
+    cat ${variants} | grep chr${chrom}_ |  awk -F "_" '{print $1"\t"$2"\t"$2}' > tmp && split -n l/${cpu} -d tmp regions
+    ls regions* | parallel -j ${cpu} "bcftools view ${cFile} -R {} -Oz -o chunk{}.vcf.gz && echo {}"
+    bcftools concat -n -f <(ls chunk*vcf.gz) -Oz -o tmp.vcf.gz && rm chunk*
+    
+    plink2 --vcf tmp.vcf.gz \
     ${pargs} \
-    --memory ${plink_mem}  --extract ${variants} \
-    --make-bed --out ${chrom} 
+    --memory ${plink_mem}  \
+    --extract ${variants} \
+    --make-bed \
+    --out ${chrom} 
     >>>
 
     runtime {
@@ -376,12 +381,15 @@ task chrom_convert {
 	File bed         = "${chrom}.bed"
 	File bim         = "${chrom}.bim"
 	File fam         = "${chrom}.fam"
-        Int file_size = chrom_size
+        Int file_size = ceil(size(cFile,'GB'))
     }
 }
+
+
+
 task sum {
 
-  Array[Float] values
+  Array[Int] values
   String docker
 
   command <<<
@@ -389,7 +397,7 @@ task sum {
   >>>
 
   output {
-    Float out = read_float(stdout())
+    Int out = read_int(stdout())
   }
 
   runtime {

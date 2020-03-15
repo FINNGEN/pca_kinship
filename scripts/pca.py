@@ -1,5 +1,6 @@
 from utils import pretty_print,file_exists,make_sure_path_exists,get_filepaths,merge_files,mapcount,Logger
 import multiprocessing,glob,argparse,os.path,subprocess,shlex,shutil,sys
+from pathlib import Path
 from pca_scripts import batches,tg,kinship,pca,plot,true_finns
 def main(args):
 
@@ -50,24 +51,26 @@ def release(args):
 
     import glob
     doc_path = os.path.join(args.out_path,'documentation')
-    make_sure_path_exists(doc_path)
-    for f in get_filepaths(doc_path): os.remove(f) # clean path else shutil.copy might fail
+    data_path = os.path.join(args.out_path,'data')
+    for path in [data_path,doc_path]:
+        make_sure_path_exists(path)
+        for f in get_filepaths(path): os.remove(f) # clean path else shutil.copy might fail
+
+    # DOC
     for pdf in glob.glob(os.path.join(args.plot_path,'*pdf')):
         shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
     outlier_pdf = os.path.join(args.pca_outlier_path, '1k_pca/',args.name + '_outlier_pcas.pdf')
     shutil.copy(outlier_pdf,os.path.join(doc_path,os.path.basename(outlier_pdf)))
     shutil.copy(args.log_file,os.path.join(doc_path,os.path.basename(args.log_file)))
-        
-    data_path = os.path.join(args.out_path,'data')
-    make_sure_path_exists(data_path)
-    for f in get_filepaths(data_path): os.remove(f) # clean path else shutil.copy might fail
+
+    # DATA
     for f in [args.inlier_file,args.outlier_file,args.rejected_file,args.final_samples,args.duplicates,args.false_finns,args.eigenvec,args.pca_output_file + '.eigenval',args.pca_output_file + '_eigenvec.var']:
         shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
-    with open(args.log_file) as i:
-        summary = i.read()
-        
+
+    # README
     readme = os.path.join(args.data_path,'pca.README') 
     with open(os.path.join(args.out_path,args.name + '_pca_readme'),'wt') as o, open(readme,'rt') as i:
+        with open(args.log_file) as tmp: summary = tmp.read()
         word_map = {'[PREFIX]':args.name,'[SUMMARY]': summary,'[N_SNPS]':mapcount(args.bed.replace('.bed','.bim'))}
         for line in i:
             for kw in word_map:
@@ -110,9 +113,9 @@ if __name__=='__main__':
     args=parser.parse_args()
     args.name = args.name
     make_sure_path_exists(args.out_path)
-  
-    args.rootPath = '/'.join(os.path.realpath(__file__).split('/')[:-2]) + '/'
-    args.data_path = os.path.join(args.rootPath,'data/')
+
+    args.parent_path = Path(os.path.realpath(__file__)).parent.parent
+    args.data_path = os.path.join(args.parent_path,'data/')
     args.misc_path =  os.path.join(args.out_path, 'misc/')
     make_sure_path_exists(args.misc_path)
 

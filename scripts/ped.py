@@ -1,4 +1,5 @@
-import os,pickle, subprocess,shlex,argparse,multiprocessing,shutil
+import os,pickle, subprocess,shlex,argparse,multiprocessing,shutil,glob
+from pathlib import Path
 from utils import basic_iterator,return_header,mapcount,get_path_info,file_exists,make_sure_path_exists,cpus,tmp_bash,pretty_print,identify_separator,NamedTemporaryFile,get_filepaths
 from collections import defaultdict as dd
 from collections import Counter
@@ -266,34 +267,32 @@ def king_pedigree(args):
 
         
 def release(args):
-    # move data to doc
-    import glob
+
     doc_path = os.path.join(args.out_path,'documentation')
-    make_sure_path_exists(doc_path)
-    for f in get_filepaths(doc_path): os.remove(f) # clean path else shutil.copy might fail
+    data_path = os.path.join(args.out_path,'data')
+    for path in [doc_path,data_path]:
+        make_sure_path_exists(path)
+        for f in get_filepaths(path): os.remove(f) # clean path else shutil.copy might fail
+
+    # DOC
+    # copy figures
     for pdf in glob.glob(os.path.join(args.out_path,'*pdf')):
         shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
+    #copy lof giles
     for log in [args.log_file,args.kinship_log_file,args.pedigree_log_file]:
         shutil.copy(log,os.path.join(doc_path,os.path.basename(log)))
-            
-    data_path = os.path.join(args.out_path,'data')
-    make_sure_path_exists(data_path)
-    for f in get_filepaths(data_path): os.remove(f) # clean path else shutil.copy might fail
-    all_files = get_filepaths(args.out_path)
+
+    # DATA
     for f in [f for f in get_filepaths(args.out_path) if f.endswith(('kin0','con'))]:
         shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
     endings = ('.bed','.fam','.bim','afreq',)
     for f in [f for f in get_filepaths(args.out_path) if f.endswith(endings) and ('kinship' in f or 'pedigree' in f)]:
         shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
 
-    parent_path =  '/'.join(os.path.realpath(__file__).split('/')[:-2]) + '/'
-    readme = os.path.join(parent_path,'data','kinship.README')
-    out_readme = os.path.join(args.out_path,args.prefix + '_kinship_readme')
-
-    with open(args.log_file) as i:
-        summary = i.read()  
-       
-    with open(out_readme,'wt') as o, open(readme,'rt') as i:
+    parent_path = Path(os.path.realpath(__file__)).parent.parent
+    readme = os.path.join(parent_path,'data','kinship.README')    
+    with open( os.path.join(args.out_path,args.prefix + '_kinship_readme'),'wt') as o, open(readme,'rt') as i:
+        with open(args.log_file) as tmp:summary = tmp.read()  
         word_map = {
             '[PREFIX]':args.prefix,
             '[NEW_PARENTS]':args.newparents,
@@ -311,11 +310,7 @@ def release(args):
             o.write(line)
             
 def main(args):    
-
-    parent_path =  '/'.join(os.path.realpath(__file__).split('/')[:-2]) + '/'
-    readme = os.path.join(parent_path,'data','kinship.README')
-    with open(readme,'rt') as i: print('test')
-    
+  
     args.plink_path = os.path.join(args.out_path,'plink')
     make_sure_path_exists(args.plink_path)
     
@@ -340,8 +335,8 @@ def main(args):
         release(args)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="kinship analysis & pedigree")
 
+    parser = argparse.ArgumentParser(description="kinship analysis & pedigree")
     
     parser.add_argument("--extract", type=file_exists, help =  "Path to list of variants to include",default = False)
     parser.add_argument("--fam", type=file_exists, help =  "Optional .fam file to subset individuals")
