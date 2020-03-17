@@ -23,7 +23,8 @@ def main(args):
     true_finns.outlier_pca(args)
     true_finns.finn_or_not(args)
     true_finns.final_merge(args)
-    
+
+
     #KINSHIP DATA
     pretty_print('KINSHIP')
     args.kinPath = os.path.join(args.out_path,'kinship/')
@@ -45,8 +46,9 @@ def main(args):
     plot.plot_first_round_outliers(args)
     plot.plot_fin_eur_outliers(args)
     plot.plot_map(args)
-
+    
     return True
+
 def release(args):
 
     import glob

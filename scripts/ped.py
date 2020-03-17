@@ -20,10 +20,13 @@ def build_bed(args,plink='plink'):
         args.force = True
         keep = f"--keep {args.fam}" if args.fam and mapcount(args.fam) > 100 else ""
         extract = f"--extract {args.extract}" if args.extract else ""
-        cmd = f"{plink} --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep} --freq"
+        freq = '--freq' if plink == 'plink2' else ""
+        cmd = f"{plink} --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep} {freq}"
         print(cmd)
         subprocess.call(shlex.split(cmd))
-    
+
+
+        
 ######################
 #------KINSHIP-------#
 ######################
@@ -145,16 +148,11 @@ def fix_fam(args):
     Adds sex info into a new fam file
     Sex code ('1' = male, '2' = female, '0' = unknown)
     '''
-    args.new_fam =  args.kinship_bed.replace("kinship.bed",'pedigree.fam')
-    pickle_path = os.path.join(args.out_path,'sex_dict.p')
-    if not os.path.isfile(pickle_path) or args.force:
-        sex_dict = dd(str)
-        idx = [return_header(args.pheno_file).index(elem) for elem in ['FINNGENID','SEX']] # column indexes
-        for fid,sex in basic_iterator(args.pheno_file,skiprows =1 ,columns = idx):
-            sex_dict[fid] = '2' if sex == 'female' else '1'
-        pickle.dump(sex_dict,open(pickle_path,'wb'))
-    else:
-        sex_dict = pickle.load(open(pickle_path,'rb'))
+
+    sex_dict = dd(str)
+    idx = [return_header(args.pheno_file).index(elem) for elem in ['FINNGENID','SEX']] # column indexes
+    for fid,sex in basic_iterator(args.pheno_file,skiprows =1 ,columns = idx):
+        sex_dict[fid] = '2' if sex == 'female' else '1'
 
     print('generating new fam file ...')
     with open(args.new_fam,'wt') as o:
@@ -178,9 +176,12 @@ def king_pedigree(args):
     pedigree_root = os.path.join(args.pedigree_path, args.prefix +'_pedigree')
     pedigree_parents_file = pedigree_root + 'updateparents.txt'
     pedigree_ids_file = pedigree_root + 'updateids.txt'
-    fix_fam(args)
+
+    args.new_fam =  args.kinship_bed.replace("kinship.bed",'pedigree.fam')
+       `
     if not os.path.isfile(pedigree_parents_file) or mapcount(pedigree_parents_file) < 1 or args.force:
         args.force = True
+        fix_fam(args)
         cmd= f'king -b {args.kinship_bed} --cpus {cpus}  --build --degree 3 --prefix {pedigree_root} --fam {args.new_fam} '
         print(cmd)
         with open(args.pedigree_log_file,'wt') as f: subprocess.call(shlex.split(cmd),stdout = f)
@@ -195,7 +196,8 @@ def king_pedigree(args):
     
     else:
         print(f'pedigree files already generated')
-   
+
+
     args.newparents = mapcount(pedigree_parents_file)
     args.newfids = mapcount(pedigree_ids_file)
     
@@ -285,9 +287,11 @@ def release(args):
     # DATA
     for f in [f for f in get_filepaths(args.out_path) if f.endswith(('kin0','con'))]:
         shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
-    endings = ('.bed','.fam','.bim','afreq',)
-    for f in [f for f in get_filepaths(args.out_path) if f.endswith(endings) and ('kinship' in f or 'pedigree' in f)]:
+    endings = ('.bed','.fam','.bim','.afreq')
+    for ending in endings:
+        f = args.kinship_bed.replace('.bed',ending)
         shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
+    shutil.copy(args.new_fam,os.path.join(data_path,os.path.basename(args.new_fam)))
 
     parent_path = Path(os.path.realpath(__file__)).parent.parent
     readme = os.path.join(parent_path,'data','kinship.README')    
@@ -328,10 +332,10 @@ def main(args):
     make_sure_path_exists(args.pedigree_path)
     king_pedigree(args)
 
-    pretty_print("BUILD BED PLINK2")
-    build_bed(args,'plink2')
-
     if args.release:
+        pretty_print("BUILD BED PLINK2")
+        args.force = True
+        build_bed(args,'plink2')
         release(args)
 
 if __name__ == "__main__":
