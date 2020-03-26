@@ -12,17 +12,18 @@ After this, king is run with flags --related --degree 3 and --duplicate. This re
 - [RELATED_COUPLES] degree 3 related couples
 - [DUPLICATES] duplicates
 
+This table contains the count of the minimum degree relation for all samples.
+
+[DEGREE_SUMMARY]
 
 Next, king is run with the flags --build --degree 3. This reconstructs the pedigree structure of the samples in the bed file.
 
 [NEW_PARENTS] samples have updated parents
 [NEW_FID] samples have updated FID
 
-
 This is the summary of [PREFIX] kinship family and family structure
 
 [SUMMARY]
-
 
 ## File structure
 
@@ -54,9 +55,9 @@ This is the summary of [PREFIX] kinship family and family structure
 | [PREFIX]_uniqfam0plot.pdf | Visualization of all unique family configurations |
 | [PREFIX]_relplot.pdf | IBD segments plot and Kinship vs IBD plot |
 | [PREFIX]_kinship_distribution.pdf | Distribution of kinship values |
+| [PREFIX]_degree_summary.txt | Count of minimum degree relations |
 
 
-#### Logs
 | File |  Description  |
 |---|---|
 | [PREFIX].log | Summary stats of kinship data |

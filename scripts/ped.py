@@ -8,6 +8,9 @@ import numpy as np
 import pandas as pd
 cpus = multiprocessing.cpu_count()
 
+degree_dict = dd(lambda:np.inf)
+for key,val in {'2nd':2,'3rd':3,'FS':1,'PO':1,'Dup/MZ':0,'4th':4}.items(): degree_dict[key] = val
+
 ######################
 #---BUILD BED FILE---#
 ######################
@@ -37,6 +40,7 @@ def kinship(args):
 
     args.kinship_log_file = os.path.join(args.out_path,args.prefix + '_kinship.log')  
     args.kin_file = os.path.join(args.kinship_path,f"{args.prefix}.kin0")
+    args.dup_file = os.path.join(args.kinship_path,f"{args.prefix}.con")
     # RETURN RELATED AND PLOT FAMILIES
     if not os.path.isfile(args.kin_file) or mapcount(args.kin_file) < 1 or args.force:
         args.force = True
@@ -55,7 +59,37 @@ def kinship(args):
             cmd = f" cat {f} | grep -v dev.off > {scriptFile.name} && Rscript {scriptFile.name} >& /dev/null  && ps2pdf {f.replace('.R','.ps')} {os.path.join(args.out_path,file_root)}.pdf && rm {f.replace('.R','.ps')} && rm {f} && rm *Rout"
             print(cmd)
             tmp_bash(cmd)
-            
+
+def degree_summary(args):
+    """
+    Creates a summary of lowest degrees
+    """
+    args.degree_table = os.path.join(args.kinship_path,f"{args.prefix}_degree_summary.txt")
+    if not os.path.isfile(args.degree_table) or args.force:
+        args.force = True
+        header = return_header(args.kin_file)
+        idx = [header.index(elem) for elem in ['ID1','ID2','InfType']]
+        print(idx)
+
+        sample_deg_dict = dd(lambda:np.inf)
+        deg_iterator = basic_iterator(args.kin_file,columns = idx,skiprows=1)
+        for id1,id2,inf in deg_iterator:
+            deg = degree_dict[inf]
+            if deg < sample_deg_dict[id1] : sample_deg_dict[id1] = deg
+            if deg < sample_deg_dict[id2] : sample_deg_dict[id2] = deg
+
+
+        with open(args.degree_table,'wt') as o:
+            o.write('|Degree | Count' + '\n')
+            o.write('|--|--|' + '\n')
+            count = Counter(sample_deg_dict.values())
+            for deg in sorted(count.keys()):
+                if deg < np.inf:
+                    o.write('|' + '|'.join(map(str,(deg,count[deg]))) + '|\n')
+    else:
+        print(f"degre summary already generated")
+
+
 def plot_kinship(args):
     '''
     Plots the ditribution of kinship values.
@@ -178,7 +212,7 @@ def king_pedigree(args):
     pedigree_ids_file = pedigree_root + 'updateids.txt'
 
     args.new_fam =  args.kinship_bed.replace("kinship.bed",'pedigree.fam')
-       `
+       
     if not os.path.isfile(pedigree_parents_file) or mapcount(pedigree_parents_file) < 1 or args.force:
         args.force = True
         fix_fam(args)
@@ -280,12 +314,12 @@ def release(args):
     # copy figures
     for pdf in glob.glob(os.path.join(args.out_path,'*pdf')):
         shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
-    #copy lof giles
-    for log in [args.log_file,args.kinship_log_file,args.pedigree_log_file]:
+    #copy log files
+    for log in [args.log_file,args.kinship_log_file,args.pedigree_log_file,args.degree_table]:
         shutil.copy(log,os.path.join(doc_path,os.path.basename(log)))
 
     # DATA
-    for f in [f for f in get_filepaths(args.out_path) if f.endswith(('kin0','con'))]:
+    for f in [args.kin_file,args.dup_file]:
         shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
     endings = ('.bed','.fam','.bim','.afreq')
     for ending in endings:
@@ -296,7 +330,8 @@ def release(args):
     parent_path = Path(os.path.realpath(__file__)).parent.parent
     readme = os.path.join(parent_path,'data','kinship.README')    
     with open( os.path.join(args.out_path,args.prefix + '_kinship_readme'),'wt') as o, open(readme,'rt') as i:
-        with open(args.log_file) as tmp:summary = tmp.read()  
+        with open(args.log_file) as tmp:summary = tmp.read()
+        with open(args.degree_table) as tmp:degree_summary = tmp.read()  
         word_map = {
             '[PREFIX]':args.prefix,
             '[NEW_PARENTS]':args.newparents,
@@ -304,6 +339,7 @@ def release(args):
             '[RELATED_COUPLES]':mapcount(args.kin_file) -1,
             '[DUPLICATES]':mapcount(args.kin_file.replace('kin0','con')) -1,
             '[SUMMARY]': summary,
+            '[DEGREE_SUMMARY]':degree_summary,
             '[N_SNPS]': mapcount(args.kinship_bed.replace('.bed','.bim')),
             '[N_SAMPLES]': mapcount(args.kinship_bed.replace('.bed','.fam'))
         }
@@ -326,6 +362,7 @@ def main(args):
     make_sure_path_exists(args.kinship_path)
     kinship(args)
     plot_kinship(args)
+    degree_summary(args)
 
     pretty_print("PEDIGREE")
     args.pedigree_path = os.path.join(args.out_path,'pedigree')
