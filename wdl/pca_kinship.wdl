@@ -202,6 +202,8 @@ task kinship{
         File relplot = "${out_path}/documentation/${prefix}_relplot.pdf"
         File famplot = "${out_path}/documentation/${prefix}_uniqfam0plot.pdf"
         File kinplot = "${out_path}/documentation/${prefix}_kinship_distribution.pdf"
+	File degreeplot = "${out_path}/documentation/${prefix}_degree_distribution.pdf"
+	File degree_summary = "${out_path}/documentation/${prefix}_degree_summary.txt"		
         }
 }
 

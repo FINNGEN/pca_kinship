@@ -1,15 +1,22 @@
 import os,pickle, subprocess,shlex,argparse,multiprocessing,shutil,glob
 from pathlib import Path
-from utils import basic_iterator,return_header,mapcount,get_path_info,file_exists,make_sure_path_exists,cpus,tmp_bash,pretty_print,identify_separator,NamedTemporaryFile,get_filepaths
+from utils import basic_iterator,return_header,mapcount,get_path_info,file_exists,make_sure_path_exists,cpus,tmp_bash,pretty_print,identify_separator,NamedTemporaryFile,get_filepaths,plot_stacked_bar
 from collections import defaultdict as dd
 from collections import Counter
 from verkko.binner import binner
 import numpy as np
 import pandas as pd
 cpus = multiprocessing.cpu_count()
+import matplotlib as mpl
+mpl.use('Agg')
+from matplotlib import pyplot as plt
+import seaborn as sns
+sns.set(palette='Set2')
+import matplotlib.ticker as ticker
+
 
 degree_dict = dd(lambda:np.inf)
-for key,val in {'2nd':2,'3rd':3,'FS':1,'PO':1,'Dup/MZ':0,'4th':4}.items(): degree_dict[key] = val
+for key,val in {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3,'4th':4}.items(): degree_dict[key] = val
 
 ######################
 #---BUILD BED FILE---#
@@ -27,7 +34,6 @@ def build_bed(args,plink='plink'):
         cmd = f"{plink} --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep} {freq}"
         print(cmd)
         subprocess.call(shlex.split(cmd))
-
 
         
 ######################
@@ -74,22 +80,79 @@ def degree_summary(args):
         sample_deg_dict = dd(lambda:np.inf)
         deg_iterator = basic_iterator(args.kin_file,columns = idx,skiprows=1)
         for id1,id2,inf in deg_iterator:
-            deg = degree_dict[inf]
+            # match inftype to numerical degree
+            deg = degree_dict[inf] 
             if deg < sample_deg_dict[id1] : sample_deg_dict[id1] = deg
-            if deg < sample_deg_dict[id2] : sample_deg_dict[id2] = deg
-
+            if deg < sample_deg_dict[id2] : sample_deg_dict[id2] = deg       
 
         with open(args.degree_table,'wt') as o:
-            o.write('|Degree | Count' + '\n')
+            o.write('|Degree | Sample Count' + '|\n')
             o.write('|--|--|' + '\n')
             count = Counter(sample_deg_dict.values())
             for deg in sorted(count.keys()):
                 if deg < np.inf:
                     o.write('|' + '|'.join(map(str,(deg,count[deg]))) + '|\n')
+
+           
+
     else:
         print(f"degre summary already generated")
 
+def plot_degree_dist(args):
+    """
+    Plots degree distribution for each inftype
+    """
+    
+    args.degree_fig = os.path.join(args.out_path,args.prefix +'_degree_distribution.pdf')
+    if os.path.isfile(args.degree_fig) and not args.force:
+        print(f"{args.degree_fig} already generated")
+        return
 
+    edge_list = []
+    import networkx as nx
+    G = nx.Graph()
+
+    header = return_header(args.kin_file)
+    idx = [header.index(elem) for elem in ['ID1','ID2','InfType']]
+    print(idx)
+    deg_iterator = basic_iterator(args.kin_file,columns = idx,skiprows=1)
+    for id1,id2,ind in deg_iterator:
+        G.add_edge(id1,id2,weight = ind)
+
+    max_deg = max([d for n,d in G.degree()])
+    # bins from 1 to 10 and then everything above
+    bins = binner.Bins(int,1,np.inf,'custom',param = [0.5 + i for i in range(11)] + [max_deg+1 ])
+    plot_data = []
+    labels =  [elem for elem in degree_dict if elem != '4th'][::-1]
+    for inftype in labels:
+        print(inftype)
+        s = [(n,m) for (n,m) in G.edges if G[n][m]['weight'] == inftype]
+        print(len(s),'edges in inftype subgraph')
+        h = nx.Graph()
+        h.add_edges_from(s)
+        print(h.number_of_nodes(),h.number_of_edges())
+        count = bins.bin_count([d for n,d in h.degree()])
+        plot_data.append(count)
+
+    
+    cat_labels = [int(elem) for elem in bins.centers]
+    cat_labels[-1] = "11+"
+    plot_data = np.array(plot_data)
+    print(plot_data)
+    print(labels) 
+    fig = plt.figure()
+    gs = mpl.gridspec.GridSpec(1,1)
+    ax = fig.add_subplot(gs[0,0])
+    plot_stacked_bar(plot_data,labels,category_labels= cat_labels)
+    plt.yscale('log')
+    ax.set_ylim((1,10*np.max(plot_data)))
+    ax.set_xlabel('Number of relatives per participant')
+    ax.set_ylabel(r'Number of participants')
+    fig.savefig(args.degree_fig)
+    plt.close()
+    print('done')
+
+        
 def plot_kinship(args):
     '''
     Plots the ditribution of kinship values.
@@ -138,12 +201,7 @@ def plot_kinship(args):
         
     print('plotting...')
 
-    import matplotlib as mpl
-    mpl.use('Agg')
-    from matplotlib import pyplot as plt
-    import seaborn as sns
-    sns.set(palette='Set2')
-    import matplotlib.ticker as ticker
+    
     fig = plt.figure()
     gs = mpl.gridspec.GridSpec(1,1)
     
@@ -363,7 +421,8 @@ def main(args):
     kinship(args)
     plot_kinship(args)
     degree_summary(args)
-
+    plot_degree_dist(args)
+    
     pretty_print("PEDIGREE")
     args.pedigree_path = os.path.join(args.out_path,'pedigree')
     make_sure_path_exists(args.pedigree_path)
@@ -371,7 +430,6 @@ def main(args):
 
     if args.release:
         pretty_print("BUILD BED PLINK2")
-        args.force = True
         build_bed(args,'plink2')
         release(args)
 

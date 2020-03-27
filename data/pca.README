@@ -50,7 +50,7 @@ Here's the summary of all relevant data:
 
 ## File structure
 
-###
+### Data
 | File |  Description  |
 |---|---|
 | [PREFIX]_inliers.txt | Fam file of inliers used for final PCA  |
