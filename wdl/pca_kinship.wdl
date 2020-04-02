@@ -110,7 +110,7 @@ task pca {
 	-o ${out_path} \
 	--release  |& tee ${out_file}
 
-        mv ${out_file} /cromwell_root/documentation/
+	        mv ${out_file} /cromwell_root/documentation/
         
     }
     
@@ -125,6 +125,7 @@ task pca {
     output {
         File readme = "${out_path}/${prefix}_pca_readme"
         #DATA
+	Array[File] data  = glob("/cromwell_root/data/${prefix}*")	
         File inliers = '/cromwell_root/data/${prefix}_inliers.txt'
         File outliers = '/cromwell_root/data/${prefix}_outliers.txt'
         File duplicates= '/cromwell_root/data/${prefix}_duplicates.txt'
@@ -134,7 +135,8 @@ task pca {
         File eigenval= '/cromwell_root/data/${prefix}.eigenval'
         File eigenvec= '/cromwell_root/data/${prefix}_eigenvec.txt'
         File eigenvec_var= '/cromwell_root/data/${prefix}_eigenvec.var'
-        #DOCUMENTATION 
+        #DOCUMENTATION
+	Array[File] doc = glob("/cromwell_root/documentation/${prefix}*")
         File log = '/cromwell_root/documentation/${prefix}.log'
         File output_log = '/cromwell_root/documentation/${prefix}_output.log'
         File cohort_plot = '/cromwell_root/documentation/${prefix}_cohorts.pdf'
@@ -187,6 +189,7 @@ task kinship{
     output {
         File readme = "${out_path}/${prefix}_kinship_readme"
         # DATA
+	Array[File] data  = glob("/cromwell_root/data/${prefix}*")	
         File bed = "${out_path}/data/${prefix}_kinship.bed"
         File fam = "${out_path}/data/${prefix}_kinship.fam"
         File bim = "${out_path}/data/${prefix}_kinship.bim"
@@ -195,6 +198,7 @@ task kinship{
         File kin = "${out_path}/data/${prefix}.kin0"
         File con = "${out_path}/data/${prefix}.con"
         #DOCUMENTATION
+	Array[File] doc = glob("/cromwell_root/documentation/${prefix}*")
         File log = "${out_path}/documentation/${prefix}.log"
         File kinship_log = "${out_path}/documentation/${prefix}_kinship.log"
         File pedigree_log = "${out_path}/documentation/${prefix}_pedigree.log"

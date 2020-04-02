@@ -366,3 +366,26 @@ def plot_stacked_bar(data, series_labels, category_labels=None,
                 plt.text(bar.get_x() + w/2, bar.get_y() + h/2, 
                          value_format.format(h), ha="center", 
                          va="center")
+
+
+
+  # sort inf type by kinship degree
+    
+    # labels = [k for k, v in sorted(degree_dict.items(), key=lambda item: item[1],reverse = True)]
+    # print(labels)
+    # for inftype in labels:
+    #     #edges of specific type
+    #     s = [(n,m) for (n,m) in G.edges if G[n][m]['weight'] == inftype]
+    #     h = nx.Graph()
+    #     h.add_edges_from(s)
+    #     print(inftype,h.number_of_nodes(),h.number_of_edges())
+    #     # degree distribution
+    #     count = bins.bin_count([d for n,d in h.degree()])
+    #     plot_data.append(count)
+    
+    # plot_data = np.array(plot_data)
+    # # update legend labels
+    # print(plot_data)
+    # print(cat_labels)
+    #plot_stacked_bar(plot_data,labels,category_labels= cat_labels)
+

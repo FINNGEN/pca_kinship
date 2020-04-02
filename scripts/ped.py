@@ -13,10 +13,10 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 sns.set(palette='Set2')
 import matplotlib.ticker as ticker
+import networkx as nx
+from pca_scripts.color_dict import color_dict
 
-
-degree_dict = dd(lambda:np.inf)
-for key,val in {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3,'4th':4}.items(): degree_dict[key] = val
+degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3}
 
 ######################
 #---BUILD BED FILE---#
@@ -53,11 +53,16 @@ def kinship(args):
         cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot '
         print(cmd)
         with open(args.kinship_log_file,'wt') as f: subprocess.call(shlex.split(cmd),stdout = f)
-        # produce R scripts, fix them and run them
+        # filter un/4th
+        kin_filter = args.kin_file.replace('kin0','tmp')
+        cmd = f"cat {args.kin_file} | grep -vw 'UN'  | grep -vw '4th' > {kin_filter} && mv {kin_filter} {args.kin_file} && rm {kin_filter}"
+        print(cmd)
+        tmp_bash(cmd)
+
     else:
         print("related file already generated")
-         
-        
+
+    # R SCRIPTS
     if args.force:
         scriptFile = NamedTemporaryFile(delete=True)
         for f in [f for f in get_filepaths(args.kinship_path) if f.endswith('.R')]:
@@ -66,17 +71,20 @@ def kinship(args):
             print(cmd)
             tmp_bash(cmd)
 
+            
 def degree_summary(args):
     """
     Creates a summary of lowest degrees
     """
     args.degree_table = os.path.join(args.kinship_path,f"{args.prefix}_degree_summary.txt")
     if not os.path.isfile(args.degree_table) or args.force:
-        args.force = True
         header = return_header(args.kin_file)
         idx = [header.index(elem) for elem in ['ID1','ID2','InfType']]
         print(idx)
 
+        degree_d = dd(lambda : np.inf)
+        for key,val in degree_dict.items():degree_d[key] = val
+        
         sample_deg_dict = dd(lambda:np.inf)
         deg_iterator = basic_iterator(args.kin_file,columns = idx,skiprows=1)
         for id1,id2,inf in deg_iterator:
@@ -91,12 +99,10 @@ def degree_summary(args):
             count = Counter(sample_deg_dict.values())
             for deg in sorted(count.keys()):
                 if deg < np.inf:
-                    o.write('|' + '|'.join(map(str,(deg,count[deg]))) + '|\n')
-
-           
+                    o.write('|' + '|'.join(map(str,(deg,count[deg]))) + '|\n')         
 
     else:
-        print(f"degre summary already generated")
+        print(f"degree summary already generated")
 
 def plot_degree_dist(args):
     """
@@ -108,46 +114,109 @@ def plot_degree_dist(args):
         print(f"{args.degree_fig} already generated")
         return
 
-    edge_list = []
-    import networkx as nx
-    G = nx.Graph()
+   
+    inf_dict = {}
+    inf_types = ['Dup/MZ','PO','FS','2nd','3rd']
+    for i,key in enumerate(inf_types):inf_dict[key] = i
 
-    header = return_header(args.kin_file)
-    idx = [header.index(elem) for elem in ['ID1','ID2','InfType']]
-    print(idx)
-    deg_iterator = basic_iterator(args.kin_file,columns = idx,skiprows=1)
-    for id1,id2,ind in deg_iterator:
-        G.add_edge(id1,id2,weight = ind)
+    # bins. np.inf added to keep length static across
+    bins = [1.5 + i for i in range(10)] + [20.5,np.inf]
 
-    max_deg = max([d for n,d in G.degree()])
-    # bins from 1 to 10 and then everything above
-    bins = binner.Bins(int,1,np.inf,'custom',param = [0.5 + i for i in range(11)] + [max_deg+1 ])
-    plot_data = []
-    labels =  [elem for elem in degree_dict if elem != '4th'][::-1]
-    for inftype in labels:
-        print(inftype)
-        s = [(n,m) for (n,m) in G.edges if G[n][m]['weight'] == inftype]
-        print(len(s),'edges in inftype subgraph')
-        h = nx.Graph()
-        h.add_edges_from(s)
-        print(h.number_of_nodes(),h.number_of_edges())
-        count = bins.bin_count([d for n,d in h.degree()])
-        plot_data.append(count)
+    save_count_data =  os.path.join(args.out_path,args.prefix +'_degree_count.npy')
+    save_deg_data =  os.path.join(args.out_path,args.prefix +'_degree_data.npy')
 
+    if os.path.isfile(save_count_data) and os.path.isfile(save_deg_data):
+        deg_count = np.load(save_count_data)
+        deg_data = np.load(save_deg_data)
+    else:
+        header = return_header(args.kin_file)
+        idx = [header.index(elem) for elem in ['ID1','ID2','InfType']]
+        deg_iterator = basic_iterator(args.kin_file,columns = idx,skiprows=1)
+        G = nx.Graph()
+        for id1,id2,inf in deg_iterator:
+             G.add_edge(id1,id2,weight = inf_dict[inf])
+            
+
+        # TEST FILTERING OUT LARGE FAMILIES
+        #node_lists = [nodelist for nodelist in nx.connected_components(G) if len(nodelist) > 30]
+        ##print(len(node_lists))
+        #for nodelist in node_lists:
+           # G.remove_nodes_from(nodelist)   
+
+        #CREATE ARRAY OF COUNTS
+        deg_count = np.zeros(len(bins)+1)
+        g_deg = [d for n,d in G.degree()]
+        total_samples = mapcount(args.kinship_bed.replace('.bed','.fam'))# total samples in plink data
+        deg_count[0] =total_samples - G.number_of_nodes() 
+        # assign degree count to bins adding an empty bin to fix indexes
+        count = Counter(np.digitize(g_deg,[0.5] + bins))
+        for x in count.keys():deg_count[x] = count[x]
+        np.save(save_count_data,deg_count)
+
+        # DEGREE EDGE DATA
+        deg_data =[]
+        # loop through relevant bins 
+        for i,bin in enumerate(bins):
+            print(i,bin)
+            # array that contains counts for each edge weight
+            tmp_data = np.zeros(len(inf_types))
+            # nodes of degree in bin i
+            deg_nodes = [node for node in G.nodes if np.digitize(G.degree[node],bins) == i]
+            print(len(deg_nodes),deg_count[i+1]) # should match
+            deg_weights = []
+            for node in deg_nodes:
+                for n2 in G[node]:
+                    deg_weights.append(G[node][n2]['weight'])
+            count = Counter(deg_weights)
+            for key in count:tmp_data[key] = count[key]
+            print(tmp_data,np.sum(tmp_data))
+            deg_data.append(tmp_data)
+
+        deg_data = np.array(deg_data)
+        np.save(save_deg_data, deg_data)
+
+    x_data = np.arange(len(deg_count))
+    xlabels = np.array(list(x_data[:-2]) + ["11-20","20+"])
+    print(x_data,deg_count.shape,deg_data.shape)  
+
+    # mask missing data
+    data_mask = (deg_count > 0)
+    x_data,deg_count,deg_data = x_data[data_mask],deg_count[data_mask],deg_data[data_mask[1:]]
+    deg_count = np.log10(deg_count)
     
-    cat_labels = [int(elem) for elem in bins.centers]
-    cat_labels[-1] = "11+"
-    plot_data = np.array(plot_data)
-    print(plot_data)
-    print(labels) 
     fig = plt.figure()
     gs = mpl.gridspec.GridSpec(1,1)
-    ax = fig.add_subplot(gs[0,0])
-    plot_stacked_bar(plot_data,labels,category_labels= cat_labels)
-    plt.yscale('log')
-    ax.set_ylim((1,10*np.max(plot_data)))
+    ax = fig.add_subplot(gs[0,0])      
+
+    # PLOT DONUTS
+    radius = 0.4
+    width = radius*0.6
+    colors = color_dict[len(inf_types)]['diverging']['Spectral']
+    for i,coord in enumerate(zip(x_data[1:],deg_count[1:])):
+        print(coord)
+        print(deg_data[i])
+        wedges, *_ = ax.pie(deg_data[i],colors = colors, center=coord, radius=radius,wedgeprops={'width':width,'linewidth': 0},frame=True)
+    ax.legend(wedges, list(inf_dict.keys()),loc='lower left', prop={'size': 6})
+
+    # plot global curve
+    ax.scatter(x_data,deg_count,c = 'k')
+    # X AXIS STUFF
     ax.set_xlabel('Number of relatives per participant')
+    ax.set_xlim((min(x_data)-1,max(x_data)+1))
+    ax.set_xticks(x_data)
+    ax.set_xticklabels(xlabels[data_mask])
+
+    # y AXIS STUFF
+    ax.set_ylim((1,1+np.max(deg_count)))   
     ax.set_ylabel(r'Number of participants')
+    yticks = list(range(0,int(max(deg_count)) +2))
+    ax.set_yticks(yticks)
+    ylabels = [r"$10^{{ {:2d} }}$".format(exponent) for exponent in yticks]
+    ax.set_yticklabels(ylabels)
+
+    for tick in ax.xaxis.get_major_ticks() + ax.yaxis.get_major_ticks():
+        tick.label.set_fontsize(6)
+        
     fig.savefig(args.degree_fig)
     plt.close()
     print('done')
@@ -177,7 +246,6 @@ def plot_kinship(args):
         kin_data = np.load(kin_dump, allow_pickle = True)
         
     entries = len(kin_data)
-
 
     xPos = [0.0442,0.0884,0.177,0.354,0.51]
        
@@ -224,7 +292,7 @@ def plot_kinship(args):
 
     for tick in ax.xaxis.get_major_ticks():
         tick.label.set_rotation(30)
-        tick.label.set_fontsize(6)     
+        tick.label.set_fontsize(7)     
 
     fig.savefig(args.kinship_fig)
     plt.close()
@@ -292,7 +360,12 @@ def king_pedigree(args):
 
     args.newparents = mapcount(pedigree_parents_file)
     args.newfids = mapcount(pedigree_ids_file)
-    
+    args.pedigree_parents_file = pedigree_parents_file
+
+def release_log(args):
+    """
+    Logs a bunch of stuff for the README.
+    """
     scriptFile = NamedTemporaryFile(delete=True)
     tmp_file = scriptFile.name
     args.log_file = os.path.join(args.out_path,args.prefix + '.log')
@@ -316,13 +389,26 @@ def king_pedigree(args):
 
     with open(args.log_file,'at') as o:
         o.write('\n### Manual Count \n')
-        desc_list = []        
-
-        o.write('|Kinship Type|Count|Description|\n')
-        o.write('|--|--|--|\n')
         
+        # NUMBER OF COUPLES PER KINSHIP TYPE
+        idx = return_header(args.kin_file).index('InfType')
+        data = np.loadtxt(args.kin_file,usecols=idx,dtype =str)
+        count =Counter(data)
+                
+        o.write('\n|Kinship Type|Number of couples|\n')
+        o.write('|--|--|\n')
+        for key in degree_dict:
+            c = count[key]if key in count else 0
+            o.write('|' + '|'.join([key,str(c)]) + '|\n')
+
+        
+        # DUOS/TRIOS ETC
+        o.write('\n|Family Structure Type|Count|Description|\n')
+        o.write('|--|--|--|\n')
+
+        desc_list = []
         desc ='Number of Finngen_mother Finngen_father couples who have at least one child in Finngen'
-        basic_cmd = f"""cat {pedigree_parents_file} |  awk '{{print $3"_"$4}}' | sort  """
+        basic_cmd = f"""cat {args.pedigree_parents_file} |  awk '{{print $3"_"$4}}' | sort  """
         out_cmd = f" | wc -l >{tmp_file}"
         trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep -o '\\bF\w*_FG\w*'  {out_cmd}""" 
         tmp_bash(trio_cmd)
@@ -357,8 +443,9 @@ def king_pedigree(args):
         all_sib_cmd = f"{basic_cmd} |  uniq -cd  |  grep -v '0_' | grep -v '_0' | awk '{{count+=$1}} END {{print count}}' > {tmp_file}"
         tmp_bash(all_sib_cmd)
         all_sibs = int(open(tmp_file).read())
-        o.write('|' + '|'.join(['All Siblings',str(all_sibs),desc]) + '|\n')
+        o.write('|' + '|'.join(['All Siblings',str(all_sibs),desc]) + '|\n')    
 
+        
         
 def release(args):
 
@@ -431,6 +518,7 @@ def main(args):
     if args.release:
         pretty_print("BUILD BED PLINK2")
         build_bed(args,'plink2')
+        release_log(args)
         release(args)
 
 if __name__ == "__main__":

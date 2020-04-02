@@ -54,7 +54,7 @@
     "pca_kinship.merge_plink.merge_docker": "",
     
     # KINSHIP
-    "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-kinship",
+    "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-kinship.2",
     #"pca_kinship.kinship.kinship_docker": "",
     
     #PCA
