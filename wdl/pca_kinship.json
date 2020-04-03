@@ -3,7 +3,7 @@
 # WORKFLOW INPUTS
     "pca_kinship.prefix": "finngen_R5",
     "pca_kinship.min_pheno" : "gs://r5_data/pheno/finngen_R5_v2_minimum",
-
+    "pca_kinship.sample_data": "gs://r5_data/pedigree/fgfactory_pass_samples_R5.txt",
 # PRUNE INPUTS
     "pca_kinship.prune_panel.plink_path": "gs://finngen-imputation-panel/sisu3/wgs_all",
     "pca_kinship.prune_panel.info_score": "gs://r5_data/variants/R5_info_values.txt.gz",
@@ -34,7 +34,7 @@
     "pca_kinship.filter_tg.mem":8,
     
 # PCA INPUTS
-    "pca_kinship.pca.sample_file": "gs://r5_data/pedigree/fgfactory_pass_samples_R5.txt",
+    "pca_kinship.sample_file": "gs://r5_data/pedigree/fgfactory_pass_samples_R5.txt",
     "pca_kinship.pca.cpu": 64,
     "pca_kinship.pca.mem": 32,
 
@@ -54,7 +54,7 @@
     "pca_kinship.merge_plink.merge_docker": "",
     
     # KINSHIP
-    "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-kinship.2",
+    "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:kinship.4",
     #"pca_kinship.kinship.kinship_docker": "",
     
     #PCA

@@ -3,7 +3,7 @@ workflow pca_kinship {
     String prefix
     String docker
     File min_pheno
-    
+    File sample_data 
     Array[String] chrom_list =  ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22"]
     
     call prune_panel {
@@ -44,6 +44,7 @@ workflow pca_kinship {
         prefix = prefix,
         pheno_file = min_pheno,
         docker = docker,
+	metadata = sample_data
         }
 
 
@@ -67,6 +68,7 @@ workflow pca_kinship {
         tg_bed = filter_tg.bed,
         tg_fam = filter_tg.fam,
         tg_bim = filter_tg.bim,
+	sample_file = sample_data,
         }
 }
 
@@ -126,28 +128,8 @@ task pca {
         File readme = "${out_path}/${prefix}_pca_readme"
         #DATA
 	Array[File] data  = glob("/cromwell_root/data/${prefix}*")	
-        File inliers = '/cromwell_root/data/${prefix}_inliers.txt'
-        File outliers = '/cromwell_root/data/${prefix}_outliers.txt'
-        File duplicates= '/cromwell_root/data/${prefix}_duplicates.txt'
-        File rejected= '/cromwell_root/data/${prefix}_rejected.txt'
-        File non_finns= '/cromwell_root/data/${prefix}_total_ethnic_outliers.txt'
-        File final_samples= '/cromwell_root/data/${prefix}_final_samples.txt'
-        File eigenval= '/cromwell_root/data/${prefix}.eigenval'
-        File eigenvec= '/cromwell_root/data/${prefix}_eigenvec.txt'
-        File eigenvec_var= '/cromwell_root/data/${prefix}_eigenvec.var'
         #DOCUMENTATION
 	Array[File] doc = glob("/cromwell_root/documentation/${prefix}*")
-        File log = '/cromwell_root/documentation/${prefix}.log'
-        File output_log = '/cromwell_root/documentation/${prefix}_output.log'
-        File cohort_plot = '/cromwell_root/documentation/${prefix}_cohorts.pdf'
-        File ethnic_plot = '/cromwell_root/documentation/${prefix}_ethnic_outliers.pdf'
-        File ethnic_plot_2d = '/cromwell_root/documentation/${prefix}_ethnic_outliers_pairwise.pdf'
-        File eur_plot = '/cromwell_root/documentation/${prefix}_eur_outliers.pdf'
-        File eur_plot_2d = '/cromwell_root/documentation/${prefix}_eur_outliers_pairwise.pdf'
-        File pca_plot = '/cromwell_root/documentation/${prefix}_final_pca.pdf'
-        File pca_plot_2d = '/cromwell_root/documentation/${prefix}_final_pca_pairwise.pdf'
-        File geo_plot = '/cromwell_root/documentation/${prefix}_pc_map.pdf'
-        File outliers_plot = '/cromwell_root/documentation/${prefix}_outlier_pcas.pdf'
     }
 }
 
@@ -157,6 +139,7 @@ task kinship{
     File bim_file
     File fam_file
     File pheno_file
+    File metadata
 
     String docker
     String kinship_docker
@@ -174,6 +157,7 @@ task kinship{
         --out-path ${out_path} \
         --prefix ${prefix} \
         --pheno-file ${pheno_file} \
+	--meta ${metadata} \
         --release
     }
     
@@ -199,15 +183,6 @@ task kinship{
         File con = "${out_path}/data/${prefix}.con"
         #DOCUMENTATION
 	Array[File] doc = glob("/cromwell_root/documentation/${prefix}*")
-        File log = "${out_path}/documentation/${prefix}.log"
-        File kinship_log = "${out_path}/documentation/${prefix}_kinship.log"
-        File pedigree_log = "${out_path}/documentation/${prefix}_pedigree.log"
-        File duplicateplot = "${out_path}/documentation/${prefix}_duplicateplot.pdf"
-        File relplot = "${out_path}/documentation/${prefix}_relplot.pdf"
-        File famplot = "${out_path}/documentation/${prefix}_uniqfam0plot.pdf"
-        File kinplot = "${out_path}/documentation/${prefix}_kinship_distribution.pdf"
-	File degreeplot = "${out_path}/documentation/${prefix}_degree_distribution.pdf"
-	File degree_summary = "${out_path}/documentation/${prefix}_degree_summary.txt"		
         }
 }
 

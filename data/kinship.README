@@ -56,6 +56,7 @@ This is the summary of [PREFIX] kinship family and family structure
 | [PREFIX]_uniqfam0plot.pdf | Visualization of all unique family configurations |
 | [PREFIX]_relplot.pdf | IBD segments plot and Kinship vs IBD plot |
 | [PREFIX]_degree_distribution.pdf | Distribution of degrees based on relationship type |
+| [PREFIX]_batches.pdf | Plot of network properties of kinship networks for different batches |
 | [PREFIX]_kinship_distribution.pdf | Distribution of kinship values |
 | [PREFIX]_degree_summary.txt | Count of minimum degree relations |
 
