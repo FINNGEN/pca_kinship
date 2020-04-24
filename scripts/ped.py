@@ -169,36 +169,28 @@ def release_log(args):
     tmp_file = scriptFile.name
     args.log_file = os.path.join(args.out_path,args.prefix + '.log')
 
-    
-    tmp_bash(f"cat {args.kinship_log_file} | grep 'Relationship summary' -A 3| grep MZ  > {tmp_file}")
-    tmp_bash(f"cat {args.kinship_log_file} | grep 'Relationship summary' -A 3| grep Inference  >> {tmp_file}")
-    tmp_bash(f"""head -n2 {tmp_file} | cut -f 2-   > {args.log_file}""")
 
-    lines = []
-    with open(args.log_file,'rt') as i: 
-        for line in i:
-            lines.append(line.strip().split('\t'))
+    # KING METADATA
+    #tmp_bash(f"cat {args.kinship_log_file} | grep 'Relationship summary' -A 3| grep MZ  > {tmp_file}")
+   # tmp_bash(f"cat {args.kinship_log_file} | grep 'Relationship summary' -A 3| grep Inference  >> {tmp_file}")
+   # tmp_bash(f"""head -n2 {tmp_file} | cut -f 2-   > {args.log_file}""")
+
+  
+        
 
     with open(args.log_file,'wt') as o:
-        o.write("### KING Summary\n")
-        o.write('|' + '|'.join(lines[0])  + '|\n')
-        sep = ['--' for elem in lines[0]]
-        o.write('|' + '|'.join(sep) + '|\n')
-        o.write('|' + '|'.join(lines[1]) + '|\n')
-
-    with open(args.log_file,'at') as o:
         o.write('\n### Manual Count \n')
         
         # NUMBER OF COUPLES PER KINSHIP TYPE
         idx = return_header(args.kin_file).index('InfType')
         data = np.loadtxt(args.kin_file,usecols=idx,dtype =str)
         count =Counter(data)
-                
+
         o.write('\n|Kinship Type|Number of couples|\n')
         o.write('|--|--|\n')
         for key in degree_dict:
             c = count[key]if key in count else 0
-            o.write('|' + '|'.join([key,str(c)]) + '|\n')
+            o.write('|' + '|'.join([key,str(c)]) + '|\n')           
 
         
         # DUOS/TRIOS ETC

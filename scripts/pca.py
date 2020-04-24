@@ -24,7 +24,6 @@ def main(args):
     true_finns.finn_or_not(args)
     true_finns.final_merge(args)
 
-
     #KINSHIP DATA
     pretty_print('KINSHIP')
     args.kinPath = os.path.join(args.out_path,'kinship/')

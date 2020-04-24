@@ -24,7 +24,7 @@ def outlier_pca(args):
     build_superpop(args)
 
     args.ethnic_pca_outliers = os.path.join(args.pca_outlier_path, args.name + '_ethnic_outliers.txt')
-    outliers = pca_round(args) 
+    outliers = pca_round(args)
     if not os.path.os.path.isfile(args.ethnic_pca_outliers) or args.force:
         args.force = True
         # remove tg samples from list of outliers and save in _ethnic outliers
@@ -135,7 +135,7 @@ def finn_or_not(args):
             #######################################################################
             pca_output_file = eur_outlier_path + 'finngen_' + args.name
             if not os.path.isfile(pca_output_file+ '.eigenval') or args.force:
-
+                
                 print('Calculating finngen pca...')
                 args.force = True
                 cmd = f'plink2 --bfile {args.merged_plink_file}  --keep {finngen}  --read-freq {args.merged_plink_file}.afreq --pca {args.pca_components}  approx biallelic-var-wts --threads {args.cpus} -out {pca_output_file}'

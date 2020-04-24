@@ -42,8 +42,7 @@ def plot_map(args,pc_list = [1,2,3]):
     save_path = os.path.join(args.plot_path, args.name + f"_pc_map.pdf")
     if not args.meta or os.path.isfile(save_path):
         return
-    
-  
+      
     region_plot_data = os.path.join(args.plot_path,'plot_data')    
 
     pc_avg = os.path.join(args.plot_path,'plot_data','pc_averages.csv')
@@ -216,7 +215,6 @@ def plot_fin_eur_outliers(args):
     Plots eur/fin outlier detection results
     '''
 
-
     if mapcount(args.finngen_eur_outliers) == 0:
         return
     outlier_plot_data = os.path.join(args.plot_path,'plot_data')
@@ -229,7 +227,9 @@ def plot_fin_eur_outliers(args):
             
         alpha_map = {'inliers':0.1,'EUR':1,'FIN':1,'outliers':0.1}
         size_map = {'inliers':0.1,'EUR':3,'FIN':3,'outliers':1}
-        color_map = {'inliers':"red",'EUR':"blue",'FIN':"purple",'outliers':"green"}
+        colors= color_dict[len(tags)]['qualitative']['Set1']
+        [red,blue,green,purple] = colors
+        color_map = {'inliers':red,'EUR':blue,'FIN':purple,'outliers':green}
         print('ready to plot')
 
     if not os.path.isfile(outliers_plot):
@@ -276,11 +276,23 @@ def return_outliers_df(args):
         pc_data = pd.read_csv(out_file)
 
     print(pc_data.dtypes)
-    final_tags = set(pc_data['TAG']) 
-    print(final_tags)
-    return sorted(final_tags),pc_data
-           
+    tag_size = []
+    tags = set(pc_data['TAG'])
+    for tag in tags:
+        tag_data = pc_data[pc_data["TAG"] == tag]
+        tag_size.append(len(tag_data))
+        
+    # plot them by size!
+    final_tags = [tag for _,tag in sorted(zip(tag_size,tags),reverse = True)]
+    color_maps = list(color_dict[len(tags)]['qualitative'].keys())
+    cm = 'Set1' if 'Set1' in color_maps else color_maps[0]
+    colors= color_dict[len(tags)]['qualitative'][cm]
+    [red,blue,green,purple,orange,yellow,brown,pink] = colors
+    color_map = {'FIN':purple,'FINNGEN_INLIER':red,'FINNGEN_OUTLIER':green,'EUR':blue,'AFR':pink,'EAS':yellow,'SAS':brown,'AMR':orange}
+    #color_map ={final_tags[i]:color for i,color in enumerate(colors)}
     
+    print(color_map)
+    return final_tags,pc_data,color_map
     
 
 def plot_first_round_outliers(args):
@@ -293,18 +305,19 @@ def plot_first_round_outliers(args):
 
     # create data
     if not os.path.isfile(ethnic_plot) or not os.path.isfile(ethnic_2d):
-        tags,pc_data = return_outliers_df(args)
-       
+        tags,pc_data,color_map = return_outliers_df(args)
+
+                   
     #plot 3d
     if not os.path.isfile(ethnic_plot):
         #build super pop dict for plotting
-        plot_3d(pc_data,ethnic_plot,tags,tag_column="TAG")
+        plot_3d(pc_data,ethnic_plot,tags,tag_column="TAG",color_map = color_map)
         
     else:
         args.v_print(3,'ethnic outliers 3d plot already done.')
     
     if not os.path.isfile(ethnic_2d):
-        plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG")
+        plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map)
     else:
         args.v_print(3,'ethnic outliers pairwise plot already done.')
         
@@ -341,17 +354,14 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     
     if not color_map:
         color_maps = list(color_dict[len(tags)]['qualitative'].keys())
-        if 'Set1' in color_maps:
-            cm = 'Set1'
-        else:
-            cm = color_maps[0]
+        cm = 'Set1' if 'Set1' in color_maps else color_maps[0]       
         color_map = {tag:color_dict[len(tags)]['qualitative'][cm][i] for i,tag in enumerate(tags)}
 
     for i,tag in enumerate(tags):
         tag_data = pc_data[pc_data[tag_column] == tag]
         tag_data = tag_data.head(n=3000)
-        print(tag,len(tag_data))
         color = color_map[tag]
+        print(tag,len(tag_data),color)
         ax.scatter(tag_data[pc_columns[0]],tag_data[pc_columns[1]],tag_data[pc_columns[2]], s= sizes[tag],alpha = alphas[tag],color = color,label = tag)
 
     
@@ -419,10 +429,7 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     #tag colors
     if not color_map:
         color_maps = list(color_dict[len(tags)]['qualitative'].keys())
-        if 'Set1' in color_maps:
-            cm = 'Set1'
-        else:
-            cm = color_maps[0]
+        cm = 'Set1' if 'Set1' in color_maps else color_maps[0]       
         color_map = {tag:color_dict[len(tags)]['qualitative'][cm][i] for i,tag in enumerate(tags)}
 
     for i,tag in enumerate(tags):
