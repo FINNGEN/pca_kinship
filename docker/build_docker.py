@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import shlex
 from subprocess import Popen, PIPE,call,check_output
 import argparse,datetime,subprocess

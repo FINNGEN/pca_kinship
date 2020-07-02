@@ -7,12 +7,12 @@
 # PRUNE INPUTS
     "pca_kinship.prune_panel.plink_path": "gs://finngen-imputation-panel/sisu3/wgs_all",
     "pca_kinship.prune_panel.info_score": "gs://r5_data/variants/R5_info_values.txt.gz",
-    "pca_kinship.prune_panel.info_filter": 0.99,
+    "pca_kinship.prune_panel.info_filter": 0.9,
     "pca_kinship.prune_panel.cpu": 16,
     "pca_kinship.prune_panel.mem": 4,
-    "pca_kinship.prune_panel.ld_params": "50 5 0.9 0.05",
-    "pca_kinship.prune_panel.pargs": " ' --snps-only --chr 1-22 --max-alleles 2 --maf ' ",
-    "pca_kinship.prune_panel.target": "80000",
+    "pca_kinship.prune_panel.ld_params": "500 50 0.9 0.05",
+    "pca_kinship.prune_panel.pargs": " ' --snps-only --chr 1-22 --max-alleles 2 --maf 0.01 ' ",
+    "pca_kinship.prune_panel.target": "200000",
     
 # CONVERT INPUTS
     "pca_kinship.chrom_convert.pargs":  " --allow-extra-chr --double-id  --maf ",
@@ -34,12 +34,11 @@
     "pca_kinship.filter_tg.mem":8,
     
 # PCA INPUTS
-    "pca_kinship.sample_file": "gs://r5_data/pedigree/fgfactory_pass_samples_R5.txt",
     "pca_kinship.pca.cpu": 64,
     "pca_kinship.pca.mem": 32,
 
 #DOCKERS
-    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r5",
+    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.test",
     
     #prune
     #"pca_kinship.prune_panel.prune_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-prune",
@@ -54,8 +53,8 @@
     "pca_kinship.merge_plink.merge_docker": "",
     
     # KINSHIP
-    "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:kinship.4",
-    #"pca_kinship.kinship.kinship_docker": "",
+    #"pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:kinship.4",
+    "pca_kinship.kinship.kinship_docker": "",
     
     #PCA
     #"pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-pca",

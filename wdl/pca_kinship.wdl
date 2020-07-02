@@ -140,7 +140,7 @@ task kinship{
     File fam_file
     File pheno_file
     File metadata
-
+    
     String docker
     String kinship_docker
     String final_docker  = if kinship_docker != "" then kinship_docker else docker
@@ -156,8 +156,8 @@ task kinship{
         --bed ${bed_file} \
         --out-path ${out_path} \
         --prefix ${prefix} \
-        --pheno-file ${pheno_file} \
 	--meta ${metadata} \
+        --pheno-file ${pheno_file} \
         --release
     }
     
@@ -257,6 +257,7 @@ task prune_panel {
         --ld ${ld_params} \
         --target ${target} \
         --pargs ${pargs} \
+	--release \
         --out-path "/cromwell_root/" \ 
         }
 
@@ -270,7 +271,9 @@ task prune_panel {
     }
 
     output {
-        File snplist = "/cromwell_root/${prefix}.prune.in"
+        File readme  = "/cromwell_root/${prefix}_prune_readme"
+        File snplist = "/cromwell_root/data/${prefix}.prune.in"
+	File log = "/cromwell_root/documentation/${prefix}.prune.log"
         }
 }
 

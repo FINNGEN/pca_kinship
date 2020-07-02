@@ -13,21 +13,21 @@ degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3}
 ######################
 #---BUILD BED FILE---#
 ######################
-def build_bed(args,plink='plink'):
+def build_bed(args,kwargs = "",name='kinship'):
     """ 
     Builds bed with hq variants for kinship. This is the core data set used for the all kinship analysis.    
     """
-    args.kinship_bed =os.path.join(args.plink_path,args.prefix + '_kinship.bed')
-    if not os.path.isfile(args.kinship_bed) or not mapcount(args.kinship_bed) or args.force:
+    args.kinship_bed =os.path.join(args.plink_path,args.prefix + f"_{name}" + '.bed')
+    if not os.path.isfile(args.kinship_bed)  or args.force:
         args.force = True
         keep = f"--keep {args.fam}" if args.fam and mapcount(args.fam) > 100 else ""
         extract = f"--extract {args.extract}" if args.extract else ""
-        freq = '--freq' if plink == 'plink2' else ""
-        cmd = f"{plink} --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep} {freq}"
+        cmd = f"plink2 --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep} {kwargs}"
         print(cmd)
         subprocess.call(shlex.split(cmd))
 
-        
+    print('done.')
+    
 ######################
 #------KINSHIP-------#
 ######################
@@ -95,6 +95,8 @@ def degree_summary(args):
 
     else:
         print(f"degree summary already generated")
+
+    print('done.')
         
 #######################
 #------PEDIGREE-------#
@@ -122,9 +124,7 @@ def fix_fam(args):
             o.write('\t'.join(line) + '\n')
     print('done.')
 
-
-
-    
+   
 def king_pedigree(args):
     """
     Return relatedness and build from king.
@@ -161,6 +161,8 @@ def king_pedigree(args):
     args.newfids = mapcount(pedigree_ids_file)
     args.pedigree_parents_file = pedigree_parents_file
 
+    print('done.')
+     
 def release_log(args):
     """
     Logs a bunch of stuff for the README.
@@ -174,8 +176,6 @@ def release_log(args):
     #tmp_bash(f"cat {args.kinship_log_file} | grep 'Relationship summary' -A 3| grep MZ  > {tmp_file}")
    # tmp_bash(f"cat {args.kinship_log_file} | grep 'Relationship summary' -A 3| grep Inference  >> {tmp_file}")
    # tmp_bash(f"""head -n2 {tmp_file} | cut -f 2-   > {args.log_file}""")
-
-  
         
 
     with open(args.log_file,'wt') as o:
@@ -209,7 +209,10 @@ def release_log(args):
         desc = "Total number of trios (i.e. counting multiples)"
         all_trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep  '\\bFG\w*_FG\w*' |  awk '{{count+=$1}} END {{print count}}' > {tmp_file}""" 
         tmp_bash(all_trio_cmd)
-        all_trios =  int(open(tmp_file).read())
+        try:
+            all_trios =  int(open(tmp_file).read())
+        except:
+            all_trios = 0
         o.write('|' + '|'.join(['All Trios',str(all_trios),desc]) + '|\n')
 
         desc = "Parent - child duos where the other parent is not in Finngen"
@@ -235,6 +238,7 @@ def release_log(args):
         tmp_bash(all_sib_cmd)
         all_sibs = int(open(tmp_file).read())
         o.write('|' + '|'.join(['All Siblings',str(all_sibs),desc]) + '|\n')    
+
 
         
         
@@ -291,8 +295,8 @@ def main(args):
     make_sure_path_exists(args.plink_path)
     
     pretty_print("BUILD BED")
-    build_bed(args)
-    
+    build_bed(args,kwargs="--maj-ref",name = 'plink1')
+
     pretty_print("KINSHIP")
     args.kinship_path = os.path.join(args.out_path,'kinship')
     make_sure_path_exists(args.kinship_path)
@@ -311,7 +315,7 @@ def main(args):
     
     if args.release:
         pretty_print("BUILD BED PLINK2")
-        build_bed(args,'plink2')
+        build_bed(args,kwargs = "--freq",name='kinship')
         release_log(args)
         release(args)
 
@@ -325,7 +329,7 @@ if __name__ == "__main__":
     parser.add_argument('--meta', type=file_exists, help="File with batch info fo samples",required = True)
 
     parser.add_argument('--bed', type=file_exists, help="BED filepath", required=True)
-    parser.add_argument("--out-path", type=str, help="folder in which to save the results", required=True)
+    parser.add_argument("-o","--out-path", type=str, help="folder in which to save the results", required=True)
     parser.add_argument('--prefix',  type=str, help="Output prefix", required=True)
     parser.add_argument('--force',help='Flag on whether to force run',action = "store_true")
     parser.add_argument('--release',help='Flag to structure output for release',action = "store_true")

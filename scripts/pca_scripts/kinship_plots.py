@@ -32,8 +32,11 @@ def plot_degree_dist(args,filter_batches = None):
    
 
     # bins. np.inf added to keep length static across
-    bins = [1.5 + i for i in range(10)] + [20.5,np.inf]
-
+    bins = [1.5 + i for i in range(10)] 
+    xlabels = [str(int(elem)) for elem in bins]
+    bins += [np.inf]
+    xlabels = np.array(['1'] +  xlabels + ['11+'])
+    
     save_count_data =  os.path.join(args.misc_path,args.prefix +'_degree_count.npy')
     save_deg_data =  os.path.join(args.misc_path,args.prefix +'_degree_data.npy')
 
@@ -84,7 +87,6 @@ def plot_degree_dist(args,filter_batches = None):
         np.save(save_deg_data, deg_data)
 
     x_data = np.arange(len(deg_count))
-    xlabels = np.array(list(x_data[:-2]) + ["11-20","20+"])
     print(x_data,deg_count.shape,deg_data.shape)  
 
     # mask missing data
@@ -180,8 +182,8 @@ def plot_kinship(args):
     
     fig = plt.figure()
     gs = mpl.gridspec.GridSpec(1,1)
-    
-x
+   
+
     texts = ['3rd','2nd','FS/PO','MZ/Duplicates']
     ax = fig.add_subplot(gs[0,0])
     ax2 = ax.twinx()

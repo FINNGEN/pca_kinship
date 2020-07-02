@@ -5,11 +5,13 @@
 Imputed genotype data for the Analysis Team and collaborating partners. These data are personal data; thereby that must be treated according the Finnish Personal Data Act 523/1999, EU Data Protection Directive 95/46/EC and EU General Data Protection Regulation (GDPR).
 
 The pipeline takes as input:
-- a small plink data of [PREFIX] consisting of [N_SNPS] pruned snps
+- a small plink data of [PREFIX] consisting of [N_SNPS] pruned snps. 
 - one thousand genome plink data
 - minimal phenotypes (sex and region of birth)
 - sample batch/cohort metadata
 - king degree 2 related couples
+
+Fore more info on the pruning pipeline,please check the pruning related release in the red/green library.
 
 ### Finngen & 1kg merge
 This step creates a merged plink data set with the thousand genome data.

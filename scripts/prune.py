@@ -1,7 +1,9 @@
-import os,subprocess,shlex,argparse,multiprocessing
-from utils import get_path_info,file_exists,make_sure_path_exists,mapcount,tmp_bash,is_gz_file
+import os,subprocess,shlex,argparse,multiprocessing,shutil
+from utils import get_path_info,file_exists,make_sure_path_exists,mapcount,tmp_bash,is_gz_file,get_filepaths
 cpus = multiprocessing.cpu_count()
 import numpy as np
+from pathlib import Path
+
 
 def filter_variants(args):
     """
@@ -29,6 +31,7 @@ def ld_pruning(args):
     pruned_variants = f"{args.out_root}.{args.count}.prune.in"
     if not os.path.isfile(pruned_variants) or args.force:
         cmd = f"plink2  --out {args.out_root}.{args.count} --read-freq  {args.bed.replace('.bed','.afreq')} --threads {cpus} --bfile {args.bed.replace('.bed','')} --extract {args.snplist} --indep-pairwise {' '.join(map(str,args.ld))} {args.pargs} "
+        print(cmd)
         subprocess.call(shlex.split(cmd))
     print(f"Variants left after pruning step {args.count}: {mapcount(pruned_variants)}")
     
@@ -58,20 +61,56 @@ def main(args):
     args.count= args.success = 0
     ld_pruning(args)
 
-    pruned_variants = f"{args.out_root}.prune.in"
+    args.pruned_variants = f"{args.out_root}.prune.in"
   
     # get closest value to target_snps and return random target_snps variants
     counts = {f"{args.out_root}.{i}.prune.in" : mapcount(f"{args.out_root}.{i}.prune.in") for i in range(args.count+1)}
     best_prune = [key for key in counts if counts[key] == min(counts.values(), key=lambda x:abs(x-args.target))][0]
+    args.log_file =f"{args.out_root}.prune.log" 
+    cmd = f"cp {best_prune.replace('.prune.in','.log')} {args.log_file} "
+    print(cmd)
+    subprocess.call(shlex.split(cmd))
     
     print(f'closest pruning was {best_prune} with {counts[best_prune]} snps')
-    cmd = f"cat {best_prune} | shuf | head -n {args.target} | sort > {pruned_variants} "
+    cmd = f"cat {best_prune} | shuf | head -n {args.target} | sort > {args.pruned_variants} "
     tmp_bash(cmd)             
-            
-    print(f'Final variants: {mapcount(pruned_variants)}')
+
+    args.final_variants = mapcount(args.pruned_variants)
+    print(f'Final variants: {args.final_variants}')
+    print(f"{args.ld}")
+
+    release(args)
+    
+def release(args):
+
+    import glob
+    doc_path = os.path.join(args.out_path,'documentation')
+    data_path = os.path.join(args.out_path,'data')
+    for path in [data_path,doc_path]:
+        make_sure_path_exists(path)
+        for f in get_filepaths(path): os.remove(f) # clean path else shutil.copy might fail
+
+    for f in [args.pruned_variants]:
+        shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
+
+    for f in [args.log_file]:
+        shutil.copy(f,os.path.join(doc_path,os.path.basename(f)))
+
+
+    # README
+    readme = os.path.join(args.data_path,'prune.README') 
+    with open(os.path.join(args.out_path,args.prefix + '_prune_readme'),'wt') as o, open(readme,'rt') as i:
+        with open(args.log_file) as tmp: summary = tmp.read()
+        word_map = {'[PREFIX]':args.prefix,'[TARGET]':args.target,'[LD]':args.initial_ld,'[SNPS]':args.final_variants,'[FINAL_LD]':args.ld,'[PARGS]':args.pargs}
+        for line in i:
+            for kw in word_map:
+                if kw in line:
+                    line = line.replace(kw,str(word_map[kw]))
+            o.write(line)
+
+
+
         
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LD pruning of a bed file")
 
@@ -82,19 +121,26 @@ if __name__ == "__main__":
 
     # required args
     parser.add_argument('--bed',  type=file_exists, help="BED filepath", required=True)
-    parser.add_argument("--out-path", type=str, help="folder in which to save the results", required=True)
+    parser.add_argument("-o","--out-path", type=str, help="folder in which to save the results", required=True)
     parser.add_argument('--prefix',  type=str, help="Output prefix", required=True)
 
     # optional args
-    parser.add_argument('--pargs',type = str,help='extra plink args',default = ' --maf ')
+    parser.add_argument('--pargs',type = str,help='extra plink args',default = ' --snps-only --chr 1-22 --max-alleles 2 --maf 0.01  ')
     parser.add_argument('--force',help='Flag on whether to force run',action = "store_true")
     parser.add_argument('--target',type = int,help = "Target number of snps after pruning",default = 80000)
     parser.add_argument('--ld',nargs=4,type = float,metavar = ('SIZE','STEP','THRESHOLD','STEP2'),help ='size,step,threshold,threshold_step',default = [50,5,0.9,0.05])
-    
-    args = parser.parse_args()
+    parser.add_argument('--release',action = 'store_true',help = 'Flag for data release',default = False)
 
+    args = parser.parse_args()
     # PREPROCESSING
     *args.ld,args.step = args.ld
+    args.initial_ld = args.ld
+    
     make_sure_path_exists(args.out_path)
     args.out_root = os.path.join(args.out_path,args.prefix)
+
+    args.parent_path = Path(os.path.realpath(__file__)).parent.parent
+    args.data_path = os.path.join(args.parent_path,'data/')
+
+    
     main(args)
