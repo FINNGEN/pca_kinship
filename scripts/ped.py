@@ -13,18 +13,19 @@ degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3}
 ######################
 #---BUILD BED FILE---#
 ######################
-def build_bed(args,kwargs = "",name='kinship'):
+def build_bed(args,name='kinship',kwargs = ""):
     """ 
     Builds bed with hq variants for kinship. This is the core data set used for the all kinship analysis.    
     """
-    args.kinship_bed =os.path.join(args.plink_path,args.prefix + f"_{name}" + '.bed')
+    args.kinship_bed =os.path.join(args.plink_path,args.prefix + f"_{name}.bed")
+    args.maj_bim = os.path.join(args.plink_path,args.prefix + f"_{name}_maj.bim")
     if not os.path.isfile(args.kinship_bed)  or args.force:
         args.force = True
         keep = f"--keep {args.fam}" if args.fam and mapcount(args.fam) > 100 else ""
         extract = f"--extract {args.extract}" if args.extract else ""
         cmd = f"plink2 --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep} {kwargs}"
         print(cmd)
-        subprocess.call(shlex.split(cmd))
+        subprocess.call(shlex.split(cmd))    
 
     print('done.')
     
@@ -136,7 +137,7 @@ def king_pedigree(args):
     pedigree_parents_file = pedigree_root + 'updateparents.txt'
     pedigree_ids_file = pedigree_root + 'updateids.txt'
 
-    args.new_fam =  args.kinship_bed.replace("kinship.bed",'pedigree.fam')
+    args.new_fam =  os.path.join(args.out_path,args.prefix + '_pedigree.fam') 
        
     if not os.path.isfile(pedigree_parents_file) or mapcount(pedigree_parents_file) < 1 or args.force:
         args.force = True
@@ -171,12 +172,6 @@ def release_log(args):
     tmp_file = scriptFile.name
     args.log_file = os.path.join(args.out_path,args.prefix + '.log')
 
-
-    # KING METADATA
-    #tmp_bash(f"cat {args.kinship_log_file} | grep 'Relationship summary' -A 3| grep MZ  > {tmp_file}")
-   # tmp_bash(f"cat {args.kinship_log_file} | grep 'Relationship summary' -A 3| grep Inference  >> {tmp_file}")
-   # tmp_bash(f"""head -n2 {tmp_file} | cut -f 2-   > {args.log_file}""")
-        
 
     with open(args.log_file,'wt') as o:
         o.write('\n### Manual Count \n')
@@ -295,7 +290,7 @@ def main(args):
     make_sure_path_exists(args.plink_path)
     
     pretty_print("BUILD BED")
-    build_bed(args,kwargs="--maj-ref",name = 'plink1')
+    build_bed(args,kwargs = '--maj-ref', name = 'maj_ref')
 
     pretty_print("KINSHIP")
     args.kinship_path = os.path.join(args.out_path,'kinship')
@@ -315,7 +310,7 @@ def main(args):
     
     if args.release:
         pretty_print("BUILD BED PLINK2")
-        build_bed(args,kwargs = "--freq",name='kinship')
+        build_bed(args,kwargs = '--freq', name = 'kinship')
         release_log(args)
         release(args)
 

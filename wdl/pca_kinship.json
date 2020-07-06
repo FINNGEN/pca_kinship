@@ -38,7 +38,7 @@
     "pca_kinship.pca.mem": 32,
 
 #DOCKERS
-    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.test",
+    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.1",
     
     #prune
     #"pca_kinship.prune_panel.prune_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-prune",
@@ -53,10 +53,10 @@
     "pca_kinship.merge_plink.merge_docker": "",
     
     # KINSHIP
-    #"pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:kinship.4",
-    "pca_kinship.kinship.kinship_docker": "",
+    "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.2",
+    #"pca_kinship.kinship.kinship_docker": "",
     
     #PCA
-    #"pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-pca",
-    "pca_kinship.pca.pca_docker": "",
+    "pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.2",
+    #"pca_kinship.pca.pca_docker": "",
 }

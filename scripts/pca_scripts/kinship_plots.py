@@ -35,7 +35,7 @@ def plot_degree_dist(args,filter_batches = None):
     bins = [1.5 + i for i in range(10)] 
     xlabels = [str(int(elem)) for elem in bins]
     bins += [np.inf]
-    xlabels = np.array(['1'] +  xlabels + ['11+'])
+    xlabels = np.array(['0'] +  xlabels + ['11+'])
     
     save_count_data =  os.path.join(args.misc_path,args.prefix +'_degree_count.npy')
     save_deg_data =  os.path.join(args.misc_path,args.prefix +'_degree_data.npy')
@@ -239,15 +239,13 @@ def plot_batch_data(args):
     
     print(network_batch_data)
     batches = np.loadtxt(os.path.join(args.misc_path,'batches.txt'),dtype = str)
-    print(batches)
-    n,max_avg_deg = 1000,network_batch_data[:,0].max()
-
+    n = int(np.average(network_batch_data[:,2]))
+    max_avg_deg = network_batch_data[:,0].max()
+    print(n,max_avg_deg)
     def markers_iterator():
         for marker in Line2D.filled_markers:yield marker
 
-    mit = markers_iterator()
-
-    
+    mit = markers_iterator()  
     fig = plt.figure()
     gs = mpl.gridspec.GridSpec(1,1)
     ax = fig.add_subplot(gs[0,0])
@@ -267,13 +265,9 @@ def plot_batch_data(args):
     p_max = max_avg_deg/(n-1)
     print('pmax:',p_max)
     random_data = []
-    for p in np.linspace(0,p_max,10):
-        print(p)
-        z = nx.fast_gnp_random_graph(n, p, seed=None, directed=False)
-        avg_deg = 2*z.number_of_edges()/z.number_of_nodes()
-        print(z.number_of_nodes(),z.number_of_edges(),avg_deg)
-        clustering = nx.average_clustering(z)
-        random_data.append((avg_deg,clustering))
+    for p in np.linspace(0,p_max,100):
+        avg_deg = p*(n-1)
+        random_data.append([avg_deg,p])
     data = np.array(random_data)
     ax.plot(data[:,0],data[:,1],'k--',label = 'random graph',linewidth = 0.5)   
   

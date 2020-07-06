@@ -101,14 +101,12 @@ def release(args):
     readme = os.path.join(args.data_path,'prune.README') 
     with open(os.path.join(args.out_path,args.prefix + '_prune_readme'),'wt') as o, open(readme,'rt') as i:
         with open(args.log_file) as tmp: summary = tmp.read()
-        word_map = {'[PREFIX]':args.prefix,'[TARGET]':args.target,'[LD]':args.initial_ld,'[SNPS]':args.final_variants,'[FINAL_LD]':args.ld,'[PARGS]':args.pargs}
+        word_map = {'[PREFIX]':args.prefix,'[TARGET]':args.target,'[INITIAL_LD]':args.initial_ld,'[SNPS]':args.final_variants,'[FINAL_LD]':args.ld,'[PARGS]':args.pargs,'[STEP]':args.step}
         for line in i:
             for kw in word_map:
                 if kw in line:
                     line = line.replace(kw,str(word_map[kw]))
             o.write(line)
-
-
 
         
 if __name__ == "__main__":
@@ -134,13 +132,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # PREPROCESSING
     *args.ld,args.step = args.ld
-    args.initial_ld = args.ld
+    args.initial_ld = list(args.ld)
     
     make_sure_path_exists(args.out_path)
     args.out_root = os.path.join(args.out_path,args.prefix)
 
     args.parent_path = Path(os.path.realpath(__file__)).parent.parent
     args.data_path = os.path.join(args.parent_path,'data/')
-
     
     main(args)
+
