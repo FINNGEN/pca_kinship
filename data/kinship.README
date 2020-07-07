@@ -66,3 +66,5 @@ This is the summary of [PREFIX] kinship family and family structure
 | [PREFIX].log | Summary stats of kinship data |
 | [PREFIX]_kinship.log | Output of KING --related flag |
 | [PREFIX]_pedigree.log | Output of KING --build flag |
+| [PREFIX]allsegs.txt | Segments used by KING |
+

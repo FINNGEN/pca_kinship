@@ -174,13 +174,6 @@ task kinship{
         File readme = "${out_path}/${prefix}_kinship_readme"
         # DATA
 	Array[File] data  = glob("/cromwell_root/data/${prefix}*")	
-        File bed = "${out_path}/data/${prefix}_kinship.bed"
-        File fam = "${out_path}/data/${prefix}_kinship.fam"
-        File bim = "${out_path}/data/${prefix}_kinship.bim"
-        File freq = "${out_path}/data/${prefix}_kinship.afreq"
-        File new_fam = "${out_path}/data/${prefix}_pedigree.fam" 
-        File kin = "${out_path}/data/${prefix}.kin0"
-        File con = "${out_path}/data/${prefix}.con"
         #DOCUMENTATION
 	Array[File] doc = glob("/cromwell_root/documentation/${prefix}*")
         }

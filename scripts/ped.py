@@ -40,6 +40,7 @@ def kinship(args):
     args.kinship_log_file = os.path.join(args.out_path,args.prefix + '_kinship.log')  
     args.kin_file = os.path.join(args.kinship_path,f"{args.prefix}.kin0")
     args.dup_file = os.path.join(args.kinship_path,f"{args.prefix}.con")
+    args.segs = os.path.join(args.kinship_path,f"{args.prefix}allsegs.txt")
     # RETURN RELATED AND PLOT FAMILIES
     if not os.path.isfile(args.kin_file) or mapcount(args.kin_file) < 1 or args.force:
         args.force = True
@@ -250,7 +251,7 @@ def release(args):
     for pdf in glob.glob(os.path.join(args.out_path,'*pdf')):
         shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
     #copy log files
-    for log in [args.log_file,args.kinship_log_file,args.pedigree_log_file,args.degree_table]:
+    for log in [args.log_file,args.kinship_log_file,args.pedigree_log_file,args.degree_table,args.segs]:
         shutil.copy(log,os.path.join(doc_path,os.path.basename(log)))
 
     # DATA

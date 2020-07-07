@@ -1,0 +1,23 @@
+# FINNGEN IMPUTATION PANEL PRUNING
+
+## [PREFIX] prune
+
+The script starts with [INITIAL_LD] params in plink (window,step,r2). It then decreases [STEP] in r2 iteratively pruning the imputation panel until the threshold of [TARGET] snps is reached. Once the SNP count falls under [TARGET] the closest pruning is returned.
+
+If the higher one is closer, [TARGET] snps are randomly selected, else the last pruned snps are returned.
+
+Plink flags used: [PARGS].
+
+For this run the final ld params are [FINAL_LD] and [SNPS] snps are returned.
+
+## File structure
+
+### Data
+| File |  Description  |
+|---|---|
+| [PREFIX].prune.in | Final set of pruned snps.  |
+
+### Documentation
+| File |  Description  |
+|---|---|
+| [PREFIX].prune.log | Plink log of last pruning.  |
