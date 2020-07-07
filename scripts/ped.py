@@ -19,7 +19,7 @@ def build_bed(args,name='kinship',kwargs = ""):
     """
     args.kinship_bed =os.path.join(args.plink_path,args.prefix + f"_{name}.bed")
     args.maj_bim = os.path.join(args.plink_path,args.prefix + f"_{name}_maj.bim")
-    if not os.path.isfile(args.kinship_bed)  or args.force:
+    if not os.path.isfile(args.kinship_bed) or args.force:
         args.force = True
         keep = f"--keep {args.fam}" if args.fam and mapcount(args.fam) > 100 else ""
         extract = f"--extract {args.extract}" if args.extract else ""
@@ -28,10 +28,13 @@ def build_bed(args,name='kinship',kwargs = ""):
         subprocess.call(shlex.split(cmd))    
 
     print('done.')
+
+
     
 ######################
 #------KINSHIP-------#
 ######################
+
 def kinship(args):
     """
     Returns degree 3 kinship data.
@@ -40,7 +43,7 @@ def kinship(args):
     args.kinship_log_file = os.path.join(args.out_path,args.prefix + '_kinship.log')  
     args.kin_file = os.path.join(args.kinship_path,f"{args.prefix}.kin0")
     args.dup_file = os.path.join(args.kinship_path,f"{args.prefix}.con")
-    args.segs = os.path.join(args.kinship_path,f"{args.prefix}allsegs.txt")
+    args.all_segs = os.path.join(args.kinship_path,f"{args.prefix}allsegs.txt")
     # RETURN RELATED AND PLOT FAMILIES
     if not os.path.isfile(args.kin_file) or mapcount(args.kin_file) < 1 or args.force:
         args.force = True
@@ -99,7 +102,28 @@ def degree_summary(args):
         print(f"degree summary already generated")
 
     print('done.')
+
+
+######################
+#------IBD SEG-------#
+######################
+
+def ibdseg(args):
+    """
+    Returns segment info
+    """
+    args.segs = os.path.join(args.kinship_path,f"{args.prefix}.segments.gz")
+
+    if not os.path.isfile(args.segs) or mapcount(args.segs) < 1 or args.force:
+        args.force = True
+        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --ibdseg --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)}  '
+        print(cmd)
+        with open(args.kinship_log_file,'at') as f: subprocess.call(shlex.split(cmd),stdout = f)
+
+    else:
+        print("ibdseg already run")
         
+   
 #######################
 #------PEDIGREE-------#
 #######################
@@ -247,22 +271,22 @@ def release(args):
         for f in get_filepaths(path): os.remove(f) # clean path else shutil.copy might fail
 
     # DOC
-    # copy figures
-    for pdf in glob.glob(os.path.join(args.out_path,'*pdf')):
+    for pdf in glob.glob(os.path.join(args.out_path,'*pdf')):# copy figures
         shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
-    #copy log files
-    for log in [args.log_file,args.kinship_log_file,args.pedigree_log_file,args.degree_table,args.segs]:
+        
+    for log in [args.log_file,args.kinship_log_file,args.pedigree_log_file,args.degree_table,args.all_segs]:#copy log files
         shutil.copy(log,os.path.join(doc_path,os.path.basename(log)))
 
     # DATA
-    for f in [args.kin_file,args.dup_file]:
-        shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
-    endings = ('.bed','.fam','.bim','.afreq')
-    for ending in endings:
+    for f in [args.kin_file,args.dup_file,args.segs]: # copy KING outputs
+        shutil.copy(f,os.path.join(data_path,os.path.basename(f)))       
+
+    for ending in ('.bed','.fam','.bim','.afreq') : #copy plink files
         f = args.kinship_bed.replace('.bed',ending)
         shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
     shutil.copy(args.new_fam,os.path.join(data_path,os.path.basename(args.new_fam)))
 
+    # README FILE
     parent_path = Path(os.path.realpath(__file__)).parent.parent
     readme = os.path.join(parent_path,'data','kinship.README')    
     with open( os.path.join(args.out_path,args.prefix + '_kinship_readme'),'wt') as o, open(readme,'rt') as i:
@@ -298,6 +322,9 @@ def main(args):
     make_sure_path_exists(args.kinship_path)
     kinship(args)
     degree_summary(args)
+
+    pretty_print("IBDSEG")
+    ibdseg(args)
     
     pretty_print("PEDIGREE")
     args.pedigree_path = os.path.join(args.out_path,'pedigree')
