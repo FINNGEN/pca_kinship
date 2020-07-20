@@ -107,7 +107,7 @@ def release(args):
 
     # README
     if args.extract: variant_filter = f"{args.initial_variants} starting variants from {args.extract}"
-    if args.info: variant_filter = f"{args.initial_variants} starting variants: only variants with a minimum info score of {args.info[1]} in all batches is kept."
+    if args.info: variant_filter = f"{args.initial_variants} starting variants: only variants with a minimum info score of {args.info[1]} in all batches are kept."
     else: variant_filter = f"{args.initial_variants} starting variants."
     readme = os.path.join(args.data_path,'prune.README') 
     with open(os.path.join(args.out_path,args.prefix + '_prune_readme'),'wt') as o, open(readme,'rt') as i:
