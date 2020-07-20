@@ -2,9 +2,11 @@
 
 ## [PREFIX] prune
 
+[FILTER]
+
 The script starts with [INITIAL_LD] params in plink (window,step,r2). It then decreases [STEP] in r2 iteratively pruning the imputation panel until the threshold of [TARGET] snps is reached. Once the SNP count falls under [TARGET] the closest pruning is returned.
 
-If the higher one is closer, [TARGET] snps are randomly selected, else the last pruned snps are returned.
+If the higher r2 is closer, [TARGET] snps are randomly selected, else the last pruned snps are returned.
 
 Plink flags used: [PARGS].
 

@@ -58,6 +58,9 @@ def main(args):
     else:
         args.snplist = args.bed.replace('.bed','.bim')
 
+    args.initial_variants = mapcount(args.snplist)
+    print(f"{mapcount(args.snplist)} initial variants.")   
+    
     args.count= args.success = 0
     ld_pruning(args)
 
@@ -77,7 +80,12 @@ def main(args):
 
     args.final_variants = mapcount(args.pruned_variants)
     print(f'Final variants: {args.final_variants}')
-    print(f"{args.ld}")
+
+    with open(args.log_file) as f:
+        for line in f :
+            if "--indep-pairwise" in line:
+                args.final_ld = line.strip()
+                break
 
     release(args)
     
@@ -98,10 +106,22 @@ def release(args):
 
 
     # README
+    if args.extract: variant_filter = f"{args.initial_variants} starting variants from {args.extract}"
+    if args.info: variant_filter = f"{args.initial_variants} starting variants: only variants with a minimum info score of {args.info[1]} in all batches is kept."
+    else: variant_filter = f"{args.initial_variants} starting variants."
     readme = os.path.join(args.data_path,'prune.README') 
     with open(os.path.join(args.out_path,args.prefix + '_prune_readme'),'wt') as o, open(readme,'rt') as i:
         with open(args.log_file) as tmp: summary = tmp.read()
-        word_map = {'[PREFIX]':args.prefix,'[TARGET]':args.target,'[INITIAL_LD]':args.initial_ld,'[SNPS]':args.final_variants,'[FINAL_LD]':args.ld,'[PARGS]':args.pargs,'[STEP]':args.step}
+        word_map = {
+            '[PREFIX]':args.prefix,
+            '[TARGET]':args.target,
+            '[INITIAL_LD]':args.initial_ld,
+            '[SNPS]':args.final_variants,
+            '[FINAL_LD]':args.final_ld,
+            '[PARGS]':args.pargs,
+            '[STEP]':args.step,
+            '[FILTER]':variant_filter
+    }
         for line in i:
             for kw in word_map:
                 if kw in line:
