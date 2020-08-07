@@ -15,15 +15,15 @@ def main(args):
     pretty_print('1k GENOME')
     tg.subset_1k(args)
     tg.merge_1k(args)
-        
+
     # PCA for outliers
     pretty_print('TRUE FINNS') 
     args.pca_outlier_path = os.path.join(args.out_path, 'outliers_pca/')
-    make_sure_path_exists(args.pca_outlier_path)
+    make_sure_path_exists(args.pca_outlier_path)  
     true_finns.outlier_pca(args)
     true_finns.finn_or_not(args)
     true_finns.final_merge(args)
-
+    
     #KINSHIP DATA
     pretty_print('KINSHIP')
     args.kinPath = os.path.join(args.out_path,'kinship/')
@@ -44,6 +44,7 @@ def main(args):
     plot.plot_final_pca(args)
     plot.plot_first_round_outliers(args)
     plot.plot_fin_eur_outliers(args)
+    plot.plot_fin_lap_outliers(args)
     plot.plot_map(args)
     
     return True

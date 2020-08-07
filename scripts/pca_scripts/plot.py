@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 import os,unidecode
 from itertools import combinations
 from pca_scripts.color_dict import color_dict
-from utils import make_sure_path_exists,identify_separator,mapcount
+from utils import make_sure_path_exists,identify_separator,mapcount,return_header,basic_iterator
 from collections import Counter
 
 import conda
@@ -242,8 +242,83 @@ def plot_fin_eur_outliers(args):
     else:
         args.v_print(3,'eur outliers pairwise plot already done.')
 
+##########################
+#--PLOTTING LAP FIN PCA--#
+##########################
+def plot_fin_lap_outliers(args):
+    '''
+    Plots eur/fin outlier detection results
+    '''
+
+    outlier_plot_data = os.path.join(args.plot_path,'plot_data')
+    make_sure_path_exists(outlier_plot_data)
+    
+    outliers_plot = os.path.join(args.plot_path,args.name+'_lap_outliers.pdf')
+    outliers_2d = os.path.join(args.plot_path,args.name +'_lap_outliers_pairwise.pdf')
+    if not os.path.isfile(outliers_plot) or not os.path.isfile(outliers_2d):
+        tags,pc_data = return_fin_lap_df(args)
+            
+        alpha_map = {'inliers':0.1,'LAP_in':.1,'LAP_out':1,'outliers':0.1}
+        size_map = {'inliers':0.1,'LAP_in':1,'LAP_out':3,'outliers':1}
+        colors= color_dict[len(tags)]['qualitative']['Set1']
+        [red,blue,green,purple,orange] = colors
+        color_map = {'inliers':red,'outliers':purple,'LAP':blue,'ABROAD':green,'RUS':orange}
+        print('ready to plot')
+
+    if not os.path.isfile(outliers_plot):
+        plot_3d(pc_data,outliers_plot,tags,alpha_map= alpha_map,size_map = size_map,color_map = color_map,tag_column="TAG")
+    else:
+        args.v_print(3,'lap outliers 3d plot already done.')
+    
+    if not os.path.isfile(outliers_2d):
+        plot_2d(pc_data,outliers_2d,tags,alpha_map= alpha_map,size_map = size_map,color_map = color_map,tag_column="TAG")
+    else:
+        args.v_print(3,'lap outliers pairwise plot already done.')
+        
+def return_fin_lap_df(args):
+    """
+    Returns pandas dataframe with fin/lap outlier data
+    """
+    out_file = os.path.join(args.plot_path,'plot_data',"pc_lap.csv")
+
+    if not os.path.isfile(out_file):
+        pc_avg = ["PC1",'PC2','PC3']
+        # list of samples from lapland
+        laps,abroad,russia= [],[],[]
+        birth_cols = [return_header(args.meta).index(elem) for elem in ['FINNGENID','regionofbirthname']]
+        birth_iterator = basic_iterator(args.meta,columns = birth_cols,skiprows = 1)
+        for fid,land in birth_iterator:
+            if land == 'Lapland': laps.append(fid)
+            if land == 'Abroad': abroad.append(fid)
+            if land == 'Region_ceded_to_Soviet': russia.append(fid)
+
+        # separate population in 4 groups (non lap inliers/outliers and others)
+        all_outliers =np.loadtxt(args.false_finns,dtype = str)
+        all_inliers = np.loadtxt(args.final_samples,dtype=str,usecols = 0)
+                
+        score_file =  os.path.join(args.pca_outlier_path, "1k_pca/", args.name +  '.eigenvec' )
 
 
+        df =  pd.read_csv(score_file,sep = '\t',usecols = ['IID'] + pc_avg, dtype = {pc: np.float64 for pc in pc_avg})
+        df['TAG'] =""
+        df.loc[(df['IID'].isin(all_inliers)),"TAG"] = "inliers"
+        df.loc[(df['IID'].isin(all_outliers)),"TAG"] = "outliers"
+        df.loc[((df['IID'].isin(laps)) & (df["TAG"]=="outliers")),"TAG"] = "LAP"
+        df.loc[((df['IID'].isin(abroad)) & (df["TAG"]=="outliers")),"TAG"] = "ABROAD"
+        df.loc[((df['IID'].isin(russia)) & (df["TAG"]=="outliers")),"TAG"] = "RUS"
+        
+
+        pc_data = df[df.TAG != ""]
+        print(pc_data.head())
+        pc_data.to_csv(out_file,index=False)
+
+    else:
+        pc_data = pd.read_csv(out_file)
+        
+    final_tags = set(pc_data['TAG']) 
+    print(final_tags)
+    return final_tags,pc_data
+    
 #########################
 #--PLOTTING ETHNIC PCA--#
 #########################
@@ -267,6 +342,15 @@ def return_outliers_df(args):
         
         outlier_data.loc[((outlier_data['IID'].isin(samples)) & (outlier_data["outlier"] == "TRUE")),"TAG"] = "FINNGEN_OUTLIER"
         outlier_data.loc[((outlier_data['IID'].isin(samples)) & (outlier_data["outlier"] == "FALSE")),"TAG"] = "FINNGEN_INLIER"
+
+        laps = []
+        birth_cols = [return_header(args.meta).index(elem) for elem in ['FINNGENID','regionofbirthname']]
+        birth_iterator = basic_iterator(args.meta,columns = birth_cols,skiprows = 1)
+        for fid,land in birth_iterator:
+            if land == 'Lapland': laps.append(fid)
+
+        outlier_data.loc[((outlier_data['IID'].isin(laps)) & (outlier_data["outlier"] == "TRUE")),"TAG"] = "LAP"
+            
         print(outlier_data.head())
         pc_data = pc_data.merge(outlier_data,on = "IID")
         print(pc_data.head())
@@ -287,8 +371,8 @@ def return_outliers_df(args):
     color_maps = list(color_dict[len(tags)]['qualitative'].keys())
     cm = 'Set1' if 'Set1' in color_maps else color_maps[0]
     colors= color_dict[len(tags)]['qualitative'][cm]
-    [red,blue,green,purple,orange,yellow,brown,pink] = colors
-    color_map = {'FIN':purple,'FINNGEN_INLIER':red,'FINNGEN_OUTLIER':green,'EUR':blue,'AFR':pink,'EAS':yellow,'SAS':brown,'AMR':orange}
+    [red,blue,green,purple,orange,yellow,brown,pink,grey] = colors
+    color_map = {'FIN':purple,'FINNGEN_INLIER':red,'FINNGEN_OUTLIER':green,'EUR':blue,'AFR':pink,'EAS':yellow,'SAS':brown,'AMR':orange,'LAP':grey}
     #color_map ={final_tags[i]:color for i,color in enumerate(colors)}
     
     print(color_map)
