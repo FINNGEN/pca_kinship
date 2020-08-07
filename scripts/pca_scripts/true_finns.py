@@ -256,4 +256,3 @@ def build_superpop(args):
                   
     else:
         args.v_print(3,'super pop dict already generated.')
-        

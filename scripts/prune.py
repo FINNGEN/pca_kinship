@@ -69,6 +69,8 @@ def main(args):
     # get closest value to target_snps and return random target_snps variants
     counts = {f"{args.out_root}.{i}.prune.in" : mapcount(f"{args.out_root}.{i}.prune.in") for i in range(args.count+1)}
     best_prune = [key for key in counts if counts[key] == min(counts.values(), key=lambda x:abs(x-args.target))][0]
+
+    # copy plink log as final log
     args.log_file =f"{args.out_root}.prune.log" 
     cmd = f"cp {best_prune.replace('.prune.in','.log')} {args.log_file} "
     print(cmd)
@@ -81,6 +83,7 @@ def main(args):
     args.final_variants = mapcount(args.pruned_variants)
     print(f'Final variants: {args.final_variants}')
 
+    # return final value of ld params
     with open(args.log_file) as f:
         for line in f :
             if "--indep-pairwise" in line:
