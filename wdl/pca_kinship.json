@@ -1,12 +1,12 @@
 {
 
 # WORKFLOW INPUTS
-    "pca_kinship.prefix": "finngen_R5",
-    "pca_kinship.min_pheno" : "gs://r5_data/pheno/finngen_R5_v2_minimum",
-    "pca_kinship.sample_data": "gs://r5_data/pedigree/fgfactory_pass_samples_R5.txt",
+    "pca_kinship.prefix": "finngen_R6",
+    "pca_kinship.min_pheno" : "gs://r6_data/pheno/finngen_R6_v2_minimum",
+    "pca_kinship.sample_data": "gs://r6_data/sample_data/fgfactory_pass_samples_R6_NA_removed.txt",
 # PRUNE INPUTS
     "pca_kinship.prune_panel.plink_path": "gs://finngen-imputation-panel/sisu3/wgs_all",
-    "pca_kinship.prune_panel.info_score": "gs://r5_data/variants/R5_info_values.txt.gz",
+    "pca_kinship.prune_panel.info_score": "gs://r6_data/variants/R6_info_values.txt",
     "pca_kinship.prune_panel.info_filter": 0.9,
     "pca_kinship.prune_panel.cpu": 16,
     "pca_kinship.prune_panel.mem": 4,
@@ -18,7 +18,7 @@
     "pca_kinship.chrom_convert.pargs":  " --allow-extra-chr --double-id  --maf ",
     "pca_kinship.chrom_convert.cpu": 32,
     "pca_kinship.chrom_convert.mem": 8,
-    "pca_kinship.chrom_convert.chromPath": "gs://finngen-production-library-red/finngen_R5/genotype_1.0/data/finngen_R5_chrCHROM.vcf.gz",
+    "pca_kinship.chrom_convert.chromPath": "gs://r6_data/vcf/finngen_R6_renamed_samples_passed_chrCHROM.vcf.gz",
     
 # MERGE INPUTS
     "pca_kinship.merge_plink.mem": 64,
@@ -38,7 +38,7 @@
     "pca_kinship.pca.mem": 32,
 
 #DOCKERS
-    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.1",
+    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.3",
     
     #prune
     #"pca_kinship.prune_panel.prune_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:test-prune",
@@ -53,10 +53,10 @@
     "pca_kinship.merge_plink.merge_docker": "",
     
     # KINSHIP
-    "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.2",
-    #"pca_kinship.kinship.kinship_docker": "",
+    #"pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.2",
+    "pca_kinship.kinship.kinship_docker": "",
     
     #PCA
-    "pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.2",
-    #"pca_kinship.pca.pca_docker": "",
+    #"pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r6.2",
+    "pca_kinship.pca.pca_docker": "",
 }

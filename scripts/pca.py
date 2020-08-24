@@ -17,7 +17,7 @@ def main(args):
     tg.merge_1k(args)
 
     # PCA for outliers
-    pretty_print('TRUE FINNS') 
+    pretty_print('ETHNIC FINNS') 
     args.pca_outlier_path = os.path.join(args.out_path, 'outliers_pca/')
     make_sure_path_exists(args.pca_outlier_path)  
     true_finns.outlier_pca(args)

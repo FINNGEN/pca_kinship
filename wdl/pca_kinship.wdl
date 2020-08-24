@@ -64,6 +64,7 @@ workflow pca_kinship {
         bim_file = kinship.bim,
         freq_file = kinship.freq,
         kin_file = kinship.kin,
+	
         # tg data
         tg_bed = filter_tg.bed,
         tg_fam = filter_tg.fam,
@@ -176,6 +177,12 @@ task kinship{
 	Array[File] data  = glob("/cromwell_root/data/${prefix}*")	
         #DOCUMENTATION
 	Array[File] doc = glob("/cromwell_root/documentation/${prefix}*")
+	
+	File bed = "${out_path}/data/${prefix}_kinship.bed"
+	File bim= "${out_path}/data/${prefix}_kinship.bim"
+	File fam= "${out_path}/data/${prefix}_kinship.fam"
+	File freq= "${out_path}/data/${prefix}_kinship.afreq"
+	File kin= "${out_path}/data/${prefix}.kin0"
         }
 }
 

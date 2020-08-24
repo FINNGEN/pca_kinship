@@ -258,8 +258,8 @@ def plot_fin_lap_outliers(args):
     if not os.path.isfile(outliers_plot) or not os.path.isfile(outliers_2d):
         tags,pc_data = return_fin_lap_df(args)
             
-        alpha_map = {'inliers':0.1,'LAP_in':.1,'LAP_out':1,'outliers':0.1}
-        size_map = {'inliers':0.1,'LAP_in':1,'LAP_out':3,'outliers':1}
+        alpha_map = {'inliers':0.1,'outliers':.1,'LAP':0.4,'ABROAD':0.4,'RUS':0.4}
+        size_map = {'inliers':0.1,'LAP':1,'ABROAD':1,'RUS':1,'outliers':.2}
         colors= color_dict[len(tags)]['qualitative']['Set1']
         [red,blue,green,purple,orange] = colors
         color_map = {'inliers':red,'outliers':purple,'LAP':blue,'ABROAD':green,'RUS':orange}
@@ -315,7 +315,7 @@ def return_fin_lap_df(args):
     else:
         pc_data = pd.read_csv(out_file)
         
-    final_tags = set(pc_data['TAG']) 
+    final_tags = ['inliers','LAP','ABROAD','RUS','outliers']
     print(final_tags)
     return final_tags,pc_data
     
