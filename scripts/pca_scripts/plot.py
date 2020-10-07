@@ -21,6 +21,7 @@ proj_lib = os.path.join(os.path.join(conda_dir, 'share'), 'proj')
 os.environ["PROJ_LIB"] = proj_lib
 from mpl_toolkits.basemap import Basemap
 
+
 #########################
 #--PLOTTING REGION PCA--#
 #########################
@@ -318,16 +319,23 @@ def return_fin_lap_df(args):
     final_tags = ['inliers','LAP','ABROAD','RUS','outliers']
     print(final_tags)
     return final_tags,pc_data
-    
+
+
 #########################
 #--PLOTTING ETHNIC PCA--#
 #########################
 
-def return_outliers_df(args):
+def multipc_df(args,pcs = ['PC' + elem for elem in  map(str,range(1,21))]):
+
+    
     """
     Returns pandas df with ethnic outlier info
     """
-    out_file = os.path.join(args.plot_path,'plot_data',"pc_ethnic.csv")
+
+    outlier_plot_data = os.path.join(args.plot_path,'plot_data')
+    make_sure_path_exists(outlier_plot_data)
+
+    out_file = os.path.join(args.plot_path,'plot_data',"pc_multipc.csv")
     if not os.path.isfile(out_file):
         tg_pca_file=  os.path.join(args.pca_outlier_path, '1k_pca/',args.name)       
         eigenvec_path =  tg_pca_file  + '.eigenvec'
@@ -336,7 +344,7 @@ def return_outliers_df(args):
         samples = np.loadtxt(args.sample_fam,usecols = 1,dtype = str)
         superpops = set(np.loadtxt(args.data_path + 'superpop.csv',dtype = str,delimiter =',',usecols = 1))
         # read pc data
-        pc_data = pd.read_csv(eigenvec_path,sep = '\t',usecols = ['IID',"PC1",'PC2','PC3'], dtype = {pc: np.float64 for pc in ["PC1",'PC2','PC3']})
+        pc_data = pd.read_csv(eigenvec_path,sep = '\t',usecols = ['IID'] + pcs, dtype = {pc: np.float64 for pc in pcs})
         # set finngen samples as "FINNGEN"
         outlier_data = pd.read_csv(outlier_info,dtype = str,sep = '\t',usecols = ['IID',"outlier",'SuperPops']).rename(columns ={"SuperPops":"TAG"})
         
@@ -354,6 +362,114 @@ def return_outliers_df(args):
         print(outlier_data.head())
         pc_data = pc_data.merge(outlier_data,on = "IID")
         print(pc_data.head())
+        print('saving...')
+        pc_data.to_csv(out_file,index=False)
+
+    else:
+        pc_data = pd.read_csv(out_file)
+
+    tag_size = []
+    tags = set(pc_data['TAG'])
+    for tag in tags:
+        tag_data = pc_data[pc_data["TAG"] == tag]
+        tag_size.append(len(tag_data))
+        
+    # plot them by size!
+    final_tags = ['FINNGEN_INLIER','FINNGEN_OUTLIER','EUR','FIN']
+    color_maps = list(color_dict[len(tags)]['qualitative'].keys())
+    cm = 'Set1' if 'Set1' in color_maps else color_maps[0]
+    colors= color_dict[len(tags)]['qualitative'][cm]
+    [red,blue,green,purple,orange,yellow,brown,pink,grey] = colors
+    color_map = {'FIN':purple,'FINNGEN_INLIER':red,'FINNGEN_OUTLIER':green,'EUR':blue}
+    print(final_tags)
+    print(color_map)
+
+    return final_tags,pc_data,color_map
+
+
+def multipc(args):
+
+    pc_lists = []
+    for i in range(5):
+        pc_lists.append(list(map(str,range(3*i+1,3*i+4))))
+        
+    for pc in pc_lists:
+        print(pc)
+        multipc_plot(args,pc)
+    
+def multipc_plot(args,pcs):
+    
+    '''
+    Plots outlier detection results.
+    '''
+        
+    ethnic_plot = os.path.join(args.plot_path,args.name+'_' + str(pcs[0]) +'_' + str(pcs[-1]) + '_ethnic_outliers.pdf')
+    ethnic_2d = os.path.join(args.plot_path,args.name+'_' + str(pcs[0])  +'_' + str(pcs[-1])+ '_ethnic_outliers_pairwise.pdf')
+
+    pc_columns = ['PC' + str(elem) for elem in pcs]
+    print(pc_columns)
+
+    size_map = {'FINNGEN_INLIERS':0.1,'EUR':3,'FIN':3,'FINNGEN_OUTLIERS':1}
+    alpha_map = {'FINNGEN_INLIERS':0.1,'EUR':1,'FIN':1,'FINNGEN_OUTLIERS':0.1}
+
+    # create data
+    if not os.path.isfile(ethnic_plot) or not os.path.isfile(ethnic_2d):
+        tags,pc_data,color_map = multipc_df(args)
+                   
+    #plot 3d
+    if not os.path.isfile(ethnic_plot):
+        #build super pop dict for plotting
+        plot_3d(pc_data,ethnic_plot,tags,tag_column="TAG",color_map = color_map,size_map=size_map,pc_columns=pc_columns,alpha_map = alpha_map)
+        
+    else:
+        args.v_print(3,'ethnic outliers 3d plot already done.')
+    
+    if not os.path.isfile(ethnic_2d):
+        plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map,pc_columns=pc_columns,size_map=size_map,alpha_map = alpha_map)
+    else:
+        args.v_print(3,'ethnic outliers pairwise plot already done.')
+        
+  
+#########################
+#--PLOTTING ETHNIC PCA--#
+#########################
+
+def return_outliers_df(args,pcs = ['PC1','PC2','PC3']):
+    """
+    Returns pandas df with ethnic outlier info
+    """
+
+    outlier_plot_data = os.path.join(args.plot_path,'plot_data')
+    make_sure_path_exists(outlier_plot_data)
+
+    out_file = os.path.join(args.plot_path,'plot_data',"pc_ethnic.csv")
+    if not os.path.isfile(out_file):
+        tg_pca_file=  os.path.join(args.pca_outlier_path, '1k_pca/',args.name)       
+        eigenvec_path =  tg_pca_file  + '.eigenvec'
+        #import metadata about samples
+        outlier_info = tg_pca_file + '_outlier_samples.tsv'
+        samples = np.loadtxt(args.sample_fam,usecols = 1,dtype = str)
+        superpops = set(np.loadtxt(args.data_path + 'superpop.csv',dtype = str,delimiter =',',usecols = 1))
+        # read pc data
+        pc_data = pd.read_csv(eigenvec_path,sep = '\t',usecols = ['IID'] + pcs, dtype = {pc: np.float64 for pc in pcs})
+        # set finngen samples as "FINNGEN"
+        outlier_data = pd.read_csv(outlier_info,dtype = str,sep = '\t',usecols = ['IID',"outlier",'SuperPops']).rename(columns ={"SuperPops":"TAG"})
+        
+        outlier_data.loc[((outlier_data['IID'].isin(samples)) & (outlier_data["outlier"] == "TRUE")),"TAG"] = "FINNGEN_OUTLIER"
+        outlier_data.loc[((outlier_data['IID'].isin(samples)) & (outlier_data["outlier"] == "FALSE")),"TAG"] = "FINNGEN_INLIER"
+
+        laps = []
+        birth_cols = [return_header(args.meta).index(elem) for elem in ['FINNGENID','regionofbirthname']]
+        birth_iterator = basic_iterator(args.meta,columns = birth_cols,skiprows = 1)
+        for fid,land in birth_iterator:
+            if land == 'Lapland': laps.append(fid)
+
+        outlier_data.loc[((outlier_data['IID'].isin(laps)) & (outlier_data["outlier"] == "TRUE")),"TAG"] = "LAP"
+            
+        print(outlier_data.head())
+        pc_data = pc_data.merge(outlier_data,on = "IID")
+        print(pc_data.head())
+        print('saving...')
         pc_data.to_csv(out_file,index=False)
 
     else:
@@ -376,7 +492,7 @@ def return_outliers_df(args):
     #color_map ={final_tags[i]:color for i,color in enumerate(colors)}
     
     print(color_map)
-    return final_tags,pc_data,color_map
+    return final_tags,pc_data,color_map,pcs
     
 
 def plot_first_round_outliers(args):
@@ -389,19 +505,18 @@ def plot_first_round_outliers(args):
 
     # create data
     if not os.path.isfile(ethnic_plot) or not os.path.isfile(ethnic_2d):
-        tags,pc_data,color_map = return_outliers_df(args)
-
+        tags,pc_data,color_map,pcs = return_outliers_df(args)
                    
     #plot 3d
     if not os.path.isfile(ethnic_plot):
         #build super pop dict for plotting
-        plot_3d(pc_data,ethnic_plot,tags,tag_column="TAG",color_map = color_map)
+        plot_3d(pc_data,ethnic_plot,tags,tag_column="TAG",color_map = color_map,pc_columns=pcs)
         
     else:
         args.v_print(3,'ethnic outliers 3d plot already done.')
     
     if not os.path.isfile(ethnic_2d):
-        plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map)
+        plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map,pc_columns=pcs)
     else:
         args.v_print(3,'ethnic outliers pairwise plot already done.')
         

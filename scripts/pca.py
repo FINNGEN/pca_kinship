@@ -41,6 +41,7 @@ def main(args):
     #PLOT
     args.plot_path = os.path.join(args.out_path,'plots')
     make_sure_path_exists(args.plot_path)
+    plot.multipc(args)
     plot.plot_final_pca(args)
     plot.plot_first_round_outliers(args)
     plot.plot_fin_eur_outliers(args)

@@ -22,7 +22,7 @@ RUN chmod a+x /usr/local/bin/install_packages.R && install_packages.R
 
 # PYTHON3 via conda
 RUN wget --quiet https://repo.anaconda.com/archive/Anaconda3-2019.10-Linux-x86_64.sh -O ~/anaconda.sh && \
-    /bin/bash ~/anaconda.sh -b -p /opt/conda && \
+    /	 bin/bash ~/anaconda.sh -b -p /opt/conda && \
     rm ~/anaconda.sh
     
 RUN  ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \

@@ -236,13 +236,13 @@ def release_log(args):
         o.write('|' + '|'.join(['All Trios',str(all_trios),desc]) + '|\n')
 
         desc = "Parent - child duos where the other parent is not in Finngen"
-        duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o '\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'  {out_cmd} " 
+        duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o '\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'  {out_cmd} "
         tmp_bash(duos_cmd)
         duos =  int(open(tmp_file).read())
         o.write('|' + '|'.join(['Duos',str(duos),desc]) + '|\n')
         
         desc = "Total number of duos counting multiples"
-        all_duos_cmd =  f" {basic_cmd} |  uniq -c | grep  '\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'| awk '{{count+=$1}} END {{print count}}' > {tmp_file} " 
+        all_duos_cmd =  f" {basic_cmd} |  uniq -c | grep  '\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'| awk '{{count+=$1}} END {{print count}}' > {tmp_file} "
         tmp_bash(all_duos_cmd)
         all_duos = int(open(tmp_file).read())
         o.write('|' + '|'.join(['All Duos',str(all_duos),desc]) + '|\n')
