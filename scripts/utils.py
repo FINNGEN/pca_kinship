@@ -197,8 +197,10 @@ def return_columns(l,columns):
     elif type(columns) == list:
         return list(map(l.__getitem__,columns))
 
-def tmp_bash(cmd,check = False):
+def tmp_bash(cmd,show=True,check = False,):
 
+    if show:
+        print(cmd)
     scriptFile = NamedTemporaryFile(delete=True)
     with open(scriptFile.name, 'w') as f:
         f.write("#!/bin/bash\n")
