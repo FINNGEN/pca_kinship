@@ -42,8 +42,8 @@ def plot_map(args,pc_list = [1,2,3]):
     save_path = os.path.join(args.plot_path, args.name + f"_pc_map.pdf")
     if not args.meta or os.path.isfile(save_path):
         return
-      
-    region_plot_data = os.path.join(args.plot_path,'plot_data')    
+
+    region_plot_data = os.path.join(args.plot_path,'plot_data')
 
     pc_avg = os.path.join(args.plot_path,'plot_data','pc_averages.csv')
     if not os.path.isfile(pc_avg):
@@ -54,7 +54,7 @@ def plot_map(args,pc_list = [1,2,3]):
         # return valid regions
         loc_df = get_loc_df(args)
         print(loc_df)
-        
+
         usecols = ['PC' + str(pc) for pc in pc_list]
         eigenvec = pd.read_csv(args.eigenvec, sep = '\t',index_col = 'IID')[usecols]
         eigenvec.index.names = ['FINNGENID']
@@ -69,7 +69,7 @@ def plot_map(args,pc_list = [1,2,3]):
         region_avg = pd.concat([loc_df,tmp_avg,count_df],join = 'inner',axis = 1)
         region_avg.index.names = ['regionofbirth']
         print(region_avg)
-        
+
         region_avg.to_csv(pc_avg,index=True)
         print(region_avg.shape)
     df = pd.read_csv(pc_avg,index_col = 0)
@@ -89,20 +89,21 @@ def plot_map(args,pc_list = [1,2,3]):
         for a in popList:
             locLine= plt.scatter([], [], c='k', alpha=0.5, s= a*resize, label=str(a) + ' samples')
             line1.append(locLine)
-        legend1 = plt.legend(line1,[str(a)+ ' samples' for a in popList],loc = 'lower right',fontsize = 4)
+        legend1 = plt.legend(line1,[str(a)+ ' samples' for a in popList],loc = 'lower right',
+        fontsize = 6)
 
         m.shadedrelief()
         m.drawcoastlines(color='gray',linewidth = 0.3)
         m.drawcountries(color='gray')
     fig.savefig(save_path, bbox_inches = 'tight', pad_inches = 0)
-    
+
 
 
 ########################
 #--PLOTTING FINAL PCA--#
 ########################
 def plot_final_pca(args):
-    
+
     outlier_plot_data = os.path.join(args.plot_path,'plot_data')
     make_sure_path_exists(outlier_plot_data)
 
@@ -114,19 +115,19 @@ def plot_final_pca(args):
         print('loading pc data...')
         tags,pc_data = return_cohorts_df(args)
         print('done')
-    
+
     if not os.path.isfile(pca_plot):
         plot_3d(pc_data,pca_plot,tags)
-        
+
     pcs = ["PC1",'PC2','PC3']
     if not os.path.isfile(cohort_plot):
         print(cohort_plot)
         plot_cohort_averages(pc_data,tags,cohort_plot,pcs)
-    
+
     if not os.path.isfile(pca_pairwise):
         plot_2d(pc_data,pca_pairwise,tags)
 
-        
+
 def return_cohorts_df(args):
     """
     Returns a pandas df where the cohort info is in a column.
@@ -144,23 +145,23 @@ def return_cohorts_df(args):
             count = Counter(cohort_data['COHORT'].values)
             smallest_cohort = min(count,key = count.get)
             cohort_data.loc[cohort_data['COHORT'] == smallest_cohort,'COHORT'] = 'Other'
-                
+
         print(len(cohort_data))
         pc_data = pc_data.merge(cohort_data,on = "IID")
         pc_data.to_csv(out_file,index=False)
-        
+
     else:
         pc_data = pd.read_csv(out_file)
-        
+
     final_cohorts = set(pc_data['COHORT'])
     print(final_cohorts)
     return sorted(final_cohorts),pc_data
-    
+
 def plot_cohort_averages(pc_data,cohorts,out_file,pc_columns):
 
     print('plotting cohorts...')
     fig, axes = plt.subplots(nrows=len(pc_columns), sharex=True)
-  
+
     for i,column in enumerate(pc_columns):
         ax = axes[i]
         ax.set_ylabel(column)
@@ -174,7 +175,7 @@ def plot_cohort_averages(pc_data,cohorts,out_file,pc_columns):
         ax.set(xticklabels=cohorts)
         ax.tick_params(axis='both', which='major', labelsize=6, rotation=45)
 
-    fig.savefig(out_file)     
+    fig.savefig(out_file)
     plt.close()
 
 ##########################
@@ -205,11 +206,11 @@ def return_fin_eur_df(args):
 
     else:
         pc_data = pd.read_csv(out_file)
-        
-    final_tags = set(pc_data['TAG']) 
+
+    final_tags = set(pc_data['TAG'])
     print(final_tags)
     return final_tags,pc_data
-    
+
 def plot_fin_eur_outliers(args):
     '''
     Plots eur/fin outlier detection results
@@ -219,12 +220,12 @@ def plot_fin_eur_outliers(args):
         return
     outlier_plot_data = os.path.join(args.plot_path,'plot_data')
     make_sure_path_exists(outlier_plot_data)
-    
+
     outliers_plot = os.path.join(args.plot_path,args.name+'_eur_outliers.pdf')
     outliers_2d = os.path.join(args.plot_path,args.name +'_eur_outliers_pairwise.pdf')
     if not os.path.isfile(outliers_plot) or not os.path.isfile(outliers_2d):
         tags,pc_data = return_fin_eur_df(args)
-            
+
         alpha_map = {'inliers':0.1,'EUR':1,'FIN':1,'outliers':0.1}
         size_map = {'inliers':0.1,'EUR':3,'FIN':3,'outliers':1}
         colors= color_dict[len(tags)]['qualitative']['Set1']
@@ -236,7 +237,7 @@ def plot_fin_eur_outliers(args):
         plot_3d(pc_data,outliers_plot,tags,alpha_map= alpha_map,size_map = size_map,color_map = color_map,tag_column="TAG")
     else:
         args.v_print(3,'eur outliers 3d plot already done.')
-    
+
     if not os.path.isfile(outliers_2d):
         plot_2d(pc_data,outliers_2d,tags,alpha_map= alpha_map,size_map = size_map,color_map = color_map,tag_column="TAG")
     else:
@@ -254,7 +255,7 @@ def return_outliers_df(args):
     """
     out_file = os.path.join(args.plot_path,'plot_data',"pc_ethnic.csv")
     if not os.path.isfile(out_file):
-        tg_pca_file=  os.path.join(args.pca_outlier_path, '1k_pca/',args.name)       
+        tg_pca_file=  os.path.join(args.pca_outlier_path, '1k_pca/',args.name)
         eigenvec_path =  tg_pca_file  + '.eigenvec'
         #import metadata about samples
         outlier_info = tg_pca_file + '_outlier_samples.tsv'
@@ -264,7 +265,7 @@ def return_outliers_df(args):
         pc_data = pd.read_csv(eigenvec_path,sep = '\t',usecols = ['IID',"PC1",'PC2','PC3'], dtype = {pc: np.float64 for pc in ["PC1",'PC2','PC3']})
         # set finngen samples as "FINNGEN"
         outlier_data = pd.read_csv(outlier_info,dtype = str,sep = '\t',usecols = ['IID',"outlier",'SuperPops']).rename(columns ={"SuperPops":"TAG"})
-        
+
         outlier_data.loc[((outlier_data['IID'].isin(samples)) & (outlier_data["outlier"] == "TRUE")),"TAG"] = "FINNGEN_OUTLIER"
         outlier_data.loc[((outlier_data['IID'].isin(samples)) & (outlier_data["outlier"] == "FALSE")),"TAG"] = "FINNGEN_INLIER"
         print(outlier_data.head())
@@ -281,7 +282,7 @@ def return_outliers_df(args):
     for tag in tags:
         tag_data = pc_data[pc_data["TAG"] == tag]
         tag_size.append(len(tag_data))
-        
+
     # plot them by size!
     final_tags = [tag for _,tag in sorted(zip(tag_size,tags),reverse = True)]
     color_maps = list(color_dict[len(tags)]['qualitative'].keys())
@@ -290,16 +291,16 @@ def return_outliers_df(args):
     [red,blue,green,purple,orange,yellow,brown,pink] = colors
     color_map = {'FIN':purple,'FINNGEN_INLIER':red,'FINNGEN_OUTLIER':green,'EUR':blue,'AFR':pink,'EAS':yellow,'SAS':brown,'AMR':orange}
     #color_map ={final_tags[i]:color for i,color in enumerate(colors)}
-    
+
     print(color_map)
     return final_tags,pc_data,color_map
-    
+
 
 def plot_first_round_outliers(args):
     '''
     Plots outlier detection results.
     '''
-           
+
     ethnic_plot = os.path.join(args.plot_path,args.name +'_ethnic_outliers.pdf')
     ethnic_2d = os.path.join(args.plot_path,args.name +'_ethnic_outliers_pairwise.pdf')
 
@@ -307,32 +308,32 @@ def plot_first_round_outliers(args):
     if not os.path.isfile(ethnic_plot) or not os.path.isfile(ethnic_2d):
         tags,pc_data,color_map = return_outliers_df(args)
 
-                   
+
     #plot 3d
     if not os.path.isfile(ethnic_plot):
         #build super pop dict for plotting
         plot_3d(pc_data,ethnic_plot,tags,tag_column="TAG",color_map = color_map)
-        
+
     else:
         args.v_print(3,'ethnic outliers 3d plot already done.')
-    
+
     if not os.path.isfile(ethnic_2d):
         plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map)
     else:
         args.v_print(3,'ethnic outliers pairwise plot already done.')
-        
+
 #######################
 #--PLOTTING TEMPLATE--#
 #######################
 def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = None,color_map= None,alpha_map = None,size_map = None,legend_fontsize = 4,label_fontsize = 5,random_samples = 5000,tag_column="COHORT"):
-    
+
     '''
     Inputs:
     -- pc_file : name of file where to fetch data
     -- out_file : name of figure for saving
     -- tag_column : columns of the dataframe to plot
     -- tags: list of tags to plot in tag_column
-    -- pc_columns : name of the columns in the file 
+    -- pc_columns : name of the columns in the file
     -- pc_tags : name of the pcs to plt
     -- colors_map : annotation to color_dict
     '''
@@ -351,10 +352,10 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     if alpha_map:
         for key in alpha_map:alphas[key] = alpha_map[key]
     #tag colors
-    
+
     if not color_map:
         color_maps = list(color_dict[len(tags)]['qualitative'].keys())
-        cm = 'Set1' if 'Set1' in color_maps else color_maps[0]       
+        cm = 'Set1' if 'Set1' in color_maps else color_maps[0]
         color_map = {tag:color_dict[len(tags)]['qualitative'][cm][i] for i,tag in enumerate(tags)}
 
     for i,tag in enumerate(tags):
@@ -364,18 +365,18 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
         print(tag,len(tag_data),color)
         ax.scatter(tag_data[pc_columns[0]],tag_data[pc_columns[1]],tag_data[pc_columns[2]], s= sizes[tag],alpha = alphas[tag],color = color,label = tag)
 
-    
+
     start, end = ax.get_xlim()
     ax.xaxis.set_ticks(np.linspace(start,end,5))
     ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
     for ticks in [ax.xaxis.get_major_ticks(),ax.yaxis.get_major_ticks(),ax.zaxis.get_major_ticks()]:
         for tick in ticks:
-            tick.label.set_fontsize(label_fontsize) 
- 
+            tick.label.set_fontsize(label_fontsize)
+
     start, end = ax.get_ylim()
     ax.yaxis.set_ticks(np.linspace(start,end,5))
     ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
- 
+
     start, end = ax.get_zlim()
     ax.zaxis.set_ticks(np.linspace(start,end,5))
     ax.zaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
@@ -384,14 +385,14 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     ax.set_xlabel(pc_tags[0],fontsize=10)
     ax.set_ylabel(pc_tags[1],fontsize=10)
     ax.set_zlabel(pc_tags[2],fontsize=10)
-    
+
     trim_axis(ax)
     leg = ax.legend(loc='upper left', numpoints=1, fancybox = True,prop={'size': legend_fontsize})
-    for lh in leg.legendHandles: 
+    for lh in leg.legendHandles:
         lh.set_alpha(1)
-        lh._sizes = [50] 
-  
-    fig.savefig(out_file)     
+        lh._sizes = [50]
+
+    fig.savefig(out_file)
     plt.close()
 
 
@@ -404,7 +405,7 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     -- out_file : name of figure for saving
     -- tag_column : columns of the dataframe to plot
     -- tags: list of tags to plot in tag_column
-    -- pc_columns : name of the columns in the file 
+    -- pc_columns : name of the columns in the file
     -- pc_tags : name of the pcs to plt
     -- colors_map : annotation to color_dict
     '''
@@ -414,11 +415,11 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     fig = plt.figure()
     gs = mpl.gridspec.GridSpec(3,1)
 
-    ax1 = fig.add_subplot(gs[0,0])                  
+    ax1 = fig.add_subplot(gs[0,0])
     ax2 = fig.add_subplot(gs[1,0],sharex = ax1)
-    ax3 = fig.add_subplot(gs[2,0],sharex = ax1)                  
+    ax3 = fig.add_subplot(gs[2,0],sharex = ax1)
     axes=[ax1,ax2,ax3]
-    
+
     # init tag sizes
     sizes = dd(lambda :1)
     if size_map:
@@ -429,7 +430,7 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     #tag colors
     if not color_map:
         color_maps = list(color_dict[len(tags)]['qualitative'].keys())
-        cm = 'Set1' if 'Set1' in color_maps else color_maps[0]       
+        cm = 'Set1' if 'Set1' in color_maps else color_maps[0]
         color_map = {tag:color_dict[len(tags)]['qualitative'][cm][i] for i,tag in enumerate(tags)}
 
     for i,tag in enumerate(tags):
@@ -453,13 +454,13 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
             tick.label.set_fontsize(6)
         for tick in ax.yaxis.get_major_ticks():
             tick.label.set_fontsize(6)
-            
-    leg = ax1.legend(loc='upper left', numpoints=1, fancybox = True,prop={'size': legend_fontsize})
-    for lh in leg.legendHandles: 
-        lh.set_alpha(1)
-        lh._sizes = [50] 
 
-        
+    leg = ax1.legend(loc='upper left', numpoints=1, fancybox = True,prop={'size': legend_fontsize})
+    for lh in leg.legendHandles:
+        lh.set_alpha(1)
+        lh._sizes = [50]
+
+
     plt.setp(ax2.get_xticklabels(), visible=False)
     plt.setp(ax1.get_xticklabels(), visible=False)
     fig.savefig(out_file)

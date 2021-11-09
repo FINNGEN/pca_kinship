@@ -8,11 +8,12 @@ cpus = multiprocessing.cpu_count()
 from pca_scripts.color_dict import color_dict
 from pca_scripts import kinship_plots as kp
 
-degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3}
+degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3,'4th':4}
 
 ######################
 #---BUILD BED FILE---#
 ######################
+
 def build_bed(args,name='kinship',kwargs = ""):
     """ 
     Builds bed with hq variants for kinship. This is the core data set used for the all kinship analysis.    
@@ -190,56 +191,7 @@ def king_pedigree(args):
 
     print('done.')
      
-def release_log(args):
-    """
-    Logs a bunch of stuff for the README.
-    """
-    scriptFile = NamedTemporaryFile(delete=True)
-    tmp_file = scriptFile.name
-    args.log_file = os.path.join(args.out_path,args.prefix + '.log')
 
-
-    with open(args.log_file,'wt') as o:
-        o.write('\n### Manual Count \n')
-        
-        # NUMBER OF COUPLES PER KINSHIP TYPE
-        idx = return_header(args.kin_file).index('InfType')
-        data = np.loadtxt(args.kin_file,usecols=idx,dtype =str)
-        count =Counter(data)
-
-        o.write('\n|Kinship Type|Number of couples|\n')
-        o.write('|--|--|\n')
-        for key in degree_dict:
-            c = count[key]if key in count else 0
-            o.write('|' + '|'.join([key,str(c)]) + '|\n')           
-
-        
-        # DUOS/TRIOS ETC
-        o.write('\n|Family Structure Type|Count|Description|\n')
-        o.write('|--|--|--|\n')
-
-        desc_list = []
-        desc ='Number of Finngen_mother Finngen_father couples who have at least one child in Finngen'
-        basic_cmd = f"""cat {args.pedigree_parents_file} |  awk '{{print $3"_"$4}}' | sort  """
-        out_cmd = f" | wc -l >{tmp_file}"
-        trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep -o '\\bF\w*_FG\w*'  {out_cmd}"""
-        tmp_bash(trio_cmd)
-        trios =  int(open(tmp_file).read())
-        o.write('|' + '|'.join(['Trios',str(trios),desc]) + '|\n')
-        
-        desc = "Total number of trios (i.e. counting multiples)"
-        all_trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep  '\\bFG\w*_FG\w*' |  awk '{{count+=$1}} END {{print count}}' > {tmp_file}""" 
-        tmp_bash(all_trio_cmd)
-        try:
-            all_trios =  int(open(tmp_file).read())
-        except:
-            all_trios = 0
-        o.write('|' + '|'.join(['All Trios',str(all_trios),desc]) + '|\n')
-
-        desc = "Parent - child duos where the other parent is not in Finngen"
-        duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o '\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'  {out_cmd} "
-        print(duos_cmd)
-    
 ######################
 #------KINSHIP-------#
 ######################
@@ -428,7 +380,7 @@ def release_log(args):
 
         desc_list = []
         desc ='Number of Finngen_mother Finngen_father couples who have at least one child in Finngen'
-        basic_cmd = f"""cat {args.pedigree_parents_file} |  awk '{{print $3"_"$4}}' | sort  """
+        basic_cmd = f"""cat {args.new_fam} |  awk '{{print $3"_"$4}}' | sort  """
         out_cmd = f" | wc -l >{tmp_file}"
         trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep -o '\\bF\w*_FG\w*'  {out_cmd}""" 
         tmp_bash(trio_cmd)
@@ -445,7 +397,7 @@ def release_log(args):
         o.write('|' + '|'.join(['All Trios',str(all_trios),desc]) + '|\n')
 
         desc = "Parent - child duos where the other parent is not in Finngen"
-        duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o '\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'  {out_cmd} "
+        duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o '\\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'  {out_cmd} "
         tmp_bash(duos_cmd)
         duos =  int(open(tmp_file).read())
         o.write('|' + '|'.join(['Duos',str(duos),desc]) + '|\n')
@@ -541,9 +493,10 @@ def main(args):
     king_pedigree(args)
 
     pretty_print("PLOTS")
-    kp.plot_kinship(args)
-    kp.plot_degree_dist(args)
-    kp.plot_batch_data(args)
+    if args.plot:
+        kp.plot_kinship(args)
+        kp.plot_degree_dist(args)
+        kp.plot_batch_data(args)
     
     if args.release:
         pretty_print("BUILD BED PLINK2")
@@ -558,15 +511,21 @@ if __name__ == "__main__":
     parser.add_argument("--extract", type=file_exists, help =  "Path to list of variants to include",default = False)
     parser.add_argument("--fam", type=file_exists, help =  "Optional .fam file to subset individuals")
     parser.add_argument('--pheno-file', type=file_exists, help="Phenotype filepath. Needs to contain SEX column",required = True)
-    parser.add_argument('--meta', type=file_exists, help="File with batch info fo samples",required = True)
+    parser.add_argument('--meta', type=file_exists, help="File with batch info fo samples")
 
     parser.add_argument('--bed', type=file_exists, help="BED filepath", required=True)
     parser.add_argument("-o","--out-path", type=str, help="folder in which to save the results", required=True)
     parser.add_argument('--prefix',  type=str, help="Output prefix", required=True)
     parser.add_argument('--force',help='Flag on whether to force run',action = "store_true")
     parser.add_argument('--release',help='Flag to structure output for release',action = "store_true")
-    
+    parser.add_argument('--plot',help='Flag to plot',action = "store_true")
+
     args = parser.parse_args()
+    if args.release: args.plot = True
+    if args.plot:
+        if not args.meta:
+            raise ValueError('batch data required')
+        
     make_sure_path_exists(args.out_path)
     args.misc_path = os.path.join(args.out_path,'misc')
     make_sure_path_exists(args.misc_path)
