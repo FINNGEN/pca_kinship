@@ -57,3 +57,45 @@ This step also produces a plot of the distribution of kinship values.
 Then KING with --build option is run. This allows to create a new .fam file with updated sex and FIDs.
 
 ## pca.py
+This is script runs the pca analysis used in FG.
+
+```
+usage: pca.py [-h] --bed BED -o OUT_PATH [--name NAME] --sample-info
+              SAMPLE_INFO [--meta META] [--degree DEGREE] [--kin KIN]
+              [--pca-components PCA_COMPONENTS] [--tg-bed TG_BED]
+              [--finn-prob-filter FINN_PROB_FILTER] [--pc-filter PC_FILTER]
+              [--test TEST] [--cpus CPUS] [--force] [--release] [-v]
+
+Returning final list of variants after info_score filter and ld pruning
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --bed BED             Folder in which the merged plink file is stored
+  -o OUT_PATH, --out_path OUT_PATH
+                        Folder in which to save the results
+  --name NAME           Name to append to output files
+  --sample-info SAMPLE_INFO
+                        Path to csv file with sample,batch
+  --meta META           Path to file with regionofbirth info
+  --degree DEGREE       Degree for Kinship
+  --kin KIN             File with king related individuals
+  --pca-components PCA_COMPONENTS
+                        Components needed for pca
+  --tg-bed TG_BED       Plink 1k file
+  --finn-prob-filter FINN_PROB_FILTER
+                        Filter falue to decide whether a finngen sample is
+                        part of the EUR or FIN centroid
+  --pc-filter PC_FILTER
+                        Number of pcs on which to perform the outlier
+                        detection method
+  --test TEST           Flag for quick pca_outlier. For testing purposes. It
+                        only keeps 10k sample.
+  --cpus CPUS           Number of cpus to use (default available cpus)
+  --force               Replaces files by force
+  --release             Flag for data release
+  -v, --verbosity       Increase output verbosity (e.g., -vv is more than -v)
+```
+
+`sample-info` is a csv file that contains info about batch/cohort. It's used in the plotting stage to check if there's any batch effect in the pcas.
+
+`meta` instead contains info about the regionofbirth. It's specific to Finland and it allows us to visualize pcas on the territory, where we expect to find a very significant correlation.

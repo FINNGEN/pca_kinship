@@ -44,7 +44,7 @@ def main(args):
     plot.plot_final_pca(args)
     plot.plot_first_round_outliers(args)
     plot.plot_fin_eur_outliers(args)
-    plot.plot_map(args)
+    # plot.plot_map(args)
     
     return True
 

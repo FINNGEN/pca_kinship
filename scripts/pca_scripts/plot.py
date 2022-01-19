@@ -19,7 +19,9 @@ conda_file_dir = conda.__file__
 conda_dir = conda_file_dir.split('lib')[0]
 proj_lib = os.path.join(os.path.join(conda_dir, 'share'), 'proj')
 os.environ["PROJ_LIB"] = proj_lib
-from mpl_toolkits.basemap import Basemap
+#from mpl_toolkits.basemap import Basemap
+
+
 
 #########################
 #--PLOTTING REGION PCA--#
@@ -207,7 +209,9 @@ def return_fin_eur_df(args):
     else:
         pc_data = pd.read_csv(out_file)
 
-    final_tags = set(pc_data['TAG'])
+
+    final_tags = set(pc_data.TAG)
+    final_tags = ['inliers','FIN','outliers','EUR']
     print(final_tags)
     return final_tags,pc_data
 
@@ -227,7 +231,7 @@ def plot_fin_eur_outliers(args):
         tags,pc_data = return_fin_eur_df(args)
 
         alpha_map = {'inliers':0.1,'EUR':1,'FIN':1,'outliers':0.1}
-        size_map = {'inliers':0.1,'EUR':3,'FIN':3,'outliers':1}
+        size_map = {'inliers':1,'EUR':3,'FIN':3,'outliers':1}
         colors= color_dict[len(tags)]['qualitative']['Set1']
         [red,blue,green,purple] = colors
         color_map = {'inliers':red,'EUR':blue,'FIN':purple,'outliers':green}
@@ -239,7 +243,7 @@ def plot_fin_eur_outliers(args):
         args.v_print(3,'eur outliers 3d plot already done.')
 
     if not os.path.isfile(outliers_2d):
-        plot_2d(pc_data,outliers_2d,tags,alpha_map= alpha_map,size_map = size_map,color_map = color_map,tag_column="TAG")
+        plot_2d(pc_data,outliers_2d,tags,alpha_map= alpha_map,size_map = size_map,color_map = color_map,tag_column="TAG", legend_location = "lower right",legend_fontsize=10)
     else:
         args.v_print(3,'eur outliers pairwise plot already done.')
 
@@ -277,16 +281,13 @@ def return_outliers_df(args):
         pc_data = pd.read_csv(out_file)
 
     print(pc_data.dtypes)
-    tag_size = []
-    tags = set(pc_data['TAG'])
-    for tag in tags:
-        tag_data = pc_data[pc_data["TAG"] == tag]
-        tag_size.append(len(tag_data))
-
+    tags = set(pc_data.TAG)
+    tag_size = [len(pc_data[pc_data.TAG == tag]) for tag in tags]
+    
     # plot them by size!
     final_tags = [tag for _,tag in sorted(zip(tag_size,tags),reverse = True)]
     color_maps = list(color_dict[len(tags)]['qualitative'].keys())
-    cm = 'Set1' if 'Set1' in color_maps else color_maps[0]
+    cm = 'Set1' if 'Set1' in color_maps else color_maps[0] 
     colors= color_dict[len(tags)]['qualitative'][cm]
     [red,blue,green,purple,orange,yellow,brown,pink] = colors
     color_map = {'FIN':purple,'FINNGEN_INLIER':red,'FINNGEN_OUTLIER':green,'EUR':blue,'AFR':pink,'EAS':yellow,'SAS':brown,'AMR':orange}
@@ -322,10 +323,11 @@ def plot_first_round_outliers(args):
     else:
         args.v_print(3,'ethnic outliers pairwise plot already done.')
 
+        
 #######################
 #--PLOTTING TEMPLATE--#
 #######################
-def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = None,color_map= None,alpha_map = None,size_map = None,legend_fontsize = 4,label_fontsize = 5,random_samples = 5000,tag_column="COHORT"):
+def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = None,color_map= None,alpha_map = None,size_map = None,legend_fontsize = 4,label_fontsize = 5,random_samples = 5000,tag_column="COHORT",azim=-135,elev = 25,max_size = 3000,max_map = None):
 
     '''
     Inputs:
@@ -342,16 +344,21 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
 
     fig = plt.figure()
     gs = mpl.gridspec.GridSpec(1,1)
-    ax = Axes3D(fig, azim=-135, elev=25)
+    ax = Axes3D(fig, azim=azim, elev=elev)
 
     # init tag sizes
-    sizes = dd(lambda :1)
+    sizes = dd(lambda :.5)
     if size_map:
         for key in size_map:sizes[key] = size_map[key]
     alphas = dd(lambda:0.2)
     if alpha_map:
         for key in alpha_map:alphas[key] = alpha_map[key]
+    max_sizes = dd(lambda:max_size)
+    if max_map:
+        for key in max_map: max_sizes[key] = max_map[key]
     #tag colors
+    print(alphas)
+    print(sizes)
 
     if not color_map:
         color_maps = list(color_dict[len(tags)]['qualitative'].keys())
@@ -360,10 +367,13 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
 
     for i,tag in enumerate(tags):
         tag_data = pc_data[pc_data[tag_column] == tag]
-        tag_data = tag_data.head(n=3000)
+        max_data = max_sizes[tag]
+        tag_data = tag_data.head(n=max_data)
         color = color_map[tag]
-        print(tag,len(tag_data),color)
-        ax.scatter(tag_data[pc_columns[0]],tag_data[pc_columns[1]],tag_data[pc_columns[2]], s= sizes[tag],alpha = alphas[tag],color = color,label = tag)
+        size = sizes[tag]
+        alpha = alphas[tag]
+        print(tag,len(tag_data),alpha,size,max_data)
+        ax.scatter(tag_data[pc_columns[0]],tag_data[pc_columns[1]],tag_data[pc_columns[2]], s= size,alpha = alpha,color = color,label = tag)
 
 
     start, end = ax.get_xlim()
@@ -391,14 +401,14 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     for lh in leg.legendHandles:
         lh.set_alpha(1)
         lh._sizes = [50]
-
+        
     fig.savefig(out_file)
     plt.close()
 
 
 
 
-def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = None,color_map= None,alpha_map = None,size_map = None,legend_fontsize = 4,label_fontsize = 5,tag_column = "COHORT"):
+def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = None,color_map= None,alpha_map = None,size_map = None,legend_fontsize = 6,label_fontsize = 5,tag_column = "COHORT",max_size = 3000,max_map = None,axis_legend =2,legend_location = "lower left",rescale = 4):
     '''
      Inputs:
     -- pc_file : name of file where to fetch data
@@ -420,14 +430,21 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     ax3 = fig.add_subplot(gs[2,0],sharex = ax1)
     axes=[ax1,ax2,ax3]
 
+    
     # init tag sizes
-    sizes = dd(lambda :1)
+    sizes = dd(lambda :.5)
     if size_map:
         for key in size_map:sizes[key] = size_map[key]
     alphas = dd(lambda:0.2)
     if alpha_map:
         for key in alpha_map:alphas[key] = alpha_map[key]
+    max_sizes = dd(lambda:max_size)
+    if max_map:
+        for key in max_map: max_sizes[key] = max_map[key]
     #tag colors
+    print(alphas)
+    print(sizes)
+
     if not color_map:
         color_maps = list(color_dict[len(tags)]['qualitative'].keys())
         cm = 'Set1' if 'Set1' in color_maps else color_maps[0]
@@ -435,12 +452,18 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
 
     for i,tag in enumerate(tags):
         tag_data = pc_data[pc_data[tag_column] == tag]
-        tag_data = tag_data.head(n=3000)
+        max_data = max_sizes[tag]
+        n = min(max_data,len(tag_data))
+        tag_data = tag_data.sample(n=n)
         color = color_map[tag]
+        size = sizes[tag]
+        alpha = alphas[tag]
+        print(tag,len(tag_data),alpha,size,n)
         for i,pcs in enumerate(list(combinations(pc_columns,2)) ):
             ax = axes[i]
             plot_x,plot_y = tag_data[pcs[0]],tag_data[pcs[1]]
-            ax.scatter(plot_x,plot_y, s= sizes[tag],alpha = alphas[tag],color = color,label = tag)
+            ax.scatter(plot_x,plot_y, s= size,alpha = alpha,color = color,label = tag)        
+
 
     for i,tags in enumerate(list(combinations(pc_tags,2))):
         tag1,tag2 = tags
@@ -455,11 +478,14 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
         for tick in ax.yaxis.get_major_ticks():
             tick.label.set_fontsize(6)
 
-    leg = ax1.legend(loc='upper left', numpoints=1, fancybox = True,prop={'size': legend_fontsize})
+    leg_ax = axes[axis_legend]
+    leg = leg_ax.legend(loc=legend_location, numpoints=1, fancybox = True,prop={'size': legend_fontsize})
     for lh in leg.legendHandles:
         lh.set_alpha(1)
-        lh._sizes = [50]
-
+        if rescale:
+            lh._sizes = [lh._sizes[0]*7]
+        else:
+            lh._sizes = [50]
 
     plt.setp(ax2.get_xticklabels(), visible=False)
     plt.setp(ax1.get_xticklabels(), visible=False)
