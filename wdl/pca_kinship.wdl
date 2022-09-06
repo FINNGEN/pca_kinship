@@ -62,7 +62,7 @@ workflow pca_kinship {
     freq_file = kinship.freq,
     kin_file = kinship.kin,
     # tg data
-     tg_bed = filter_tg.bed,
+    tg_bed = filter_tg.bed,
     tg_fam = filter_tg.fam,
     tg_bim = filter_tg.bim,
     sample_file = sample_data,
@@ -90,13 +90,14 @@ task pca {
     Int cpu
   }
     
-    Int disk_size =   ceil(size(bed_file,"GB"))*6 + ceil(size(tg_bed,"GB")) + 10
-  Int mem = ceil(size(bed_file,"GB")) + 10
+  Int disk_size =   ceil(size(bed_file,"GB"))*6 + ceil(size(tg_bed,"GB")) + 100
+  Int mem = ceil(size(bed_file,"GB"))*2 + 10
   
-    String out_path = "/cromwell_root/"
+  String out_path = "/cromwell_root/"
   String out_file = prefix + "_output.log"
   
   command <<<
+  df -h
     python3 /scripts/pca.py \
     --bed  ~{bed_file} \
     --tg-bed ~{tg_bed} \

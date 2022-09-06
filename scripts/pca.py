@@ -10,7 +10,9 @@ def main(args):
     args.plink_path = os.path.join(args.out_path,'plink_files/') 
     make_sure_path_exists(args.plink_path)
     batches.batches(args)
+    batches.merge_beds(args)
 
+    
     #downloads 1k genome project and builds a plink file that can be merged
     pretty_print('1k GENOME')
     tg.subset_1k(args)
@@ -44,7 +46,7 @@ def main(args):
     plot.plot_final_pca(args)
     plot.plot_first_round_outliers(args)
     plot.plot_fin_eur_outliers(args)
-    # plot.plot_map(args)
+    plot.plot_map(args)
     
     return True
 

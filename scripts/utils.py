@@ -1,4 +1,4 @@
-import time,sys,os,mmap,gzip,subprocess,binascii
+import time,sys,os,mmap,gzip,subprocess,binascii,logging
 import numpy as np
 from tempfile import NamedTemporaryFile
 from functools import partial
@@ -8,6 +8,18 @@ cpus = multiprocessing.cpu_count()
 mem_bytes = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')  # e.g. 4015976448
 mem_mib = mem_bytes/(1024.**2) 
 proc_mem = mem_mib / (cpus +1)
+
+
+
+
+log_levels = {
+    'critical': logging.CRITICAL,
+    'error': logging.ERROR,
+    'warn': logging.WARNING,
+    'warning': logging.WARNING,
+    'info': logging.INFO,
+    'debug': logging.DEBUG
+}
 
 
 def return_open_func(f):
@@ -250,13 +262,16 @@ def merge_files(o_file,file_list):
                 for line in i:
                     o.write(line)
 
-def make_sure_path_exists(path):
+def make_sure_path_exists(paths):
+    if type(paths) is not list: paths = [paths]
     import errno
-    try:
-        os.makedirs(path)
-    except OSError as exception:
-        if exception.errno != errno.EEXIST:
-            raise                
+    for path in paths:
+        try:
+            os.makedirs(path)
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise
+
 
 
 def is_gz_file(filepath):

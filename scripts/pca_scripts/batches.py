@@ -20,14 +20,13 @@ def batches(args):
         sample_info.loc[axiom_mask,'COHORT'] = sample_info.loc[axiom_mask,'RELEASE']             
 
         sample_info.loc[:,('BATCH','COHORT','IID')].to_csv(new_sample,index = False)
-        args.v_print(1,sample_info.head())      
         
     # Replace args.sample_info with the filtered version
     args.sample_info = new_sample
         
     # write batches summary
-    args.cohorts = args.misc_path +'cohorts.txt'
-    args.batches = args.misc_path +'batches.txt'
+    args.cohorts = os.path.join(args.misc_path,'cohorts.txt')
+    args.batches = os.path.join(args.misc_path,'batches.txt')
     if not os.path.isfile(args.cohorts) or args.force or not os.path.isfile(args.batches):
         args.force = True
         sample_info = pd.read_csv(args.sample_info,sep = identify_separator(args.sample_info))
@@ -39,7 +38,7 @@ def batches(args):
     print(f"{mapcount(args.cohorts)} cohorts ")
     print(f"{mapcount(args.batches)} batches")
     
-      
+def merge_beds(args):
     args.sample_fam =os.path.join(args.misc_path, 'samples.fam')                                                                  
     if not os.path.isfile(args.sample_fam) or mapcount(args.sample_fam) < 1 or args.force:
         args.force = True

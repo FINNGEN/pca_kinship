@@ -218,7 +218,7 @@ def plot_batch_data(args):
     if os.path.isfile(args.batch_fig):
         print(args.batch_fig + " already generated")
         return
-    
+
     plot_data = os.path.join(args.misc_path, args.prefix +'_batches_degree.npy')
     if not os.path.isfile(plot_data):
         G = read_network(args)
@@ -238,7 +238,7 @@ def plot_batch_data(args):
         network_batch_data = np.load(plot_data)    
     
     print(network_batch_data)
-    batches = np.loadtxt(os.path.join(args.misc_path,'batches.txt'),dtype = str)
+    batches = np.loadtxt(os.path.join(args.misc_path,'cohorts.txt'),dtype = str)
     n = int(np.average(network_batch_data[:,2]))
     max_avg_deg = network_batch_data[:,0].max()
     print(n,max_avg_deg)
@@ -282,24 +282,7 @@ def plot_batch_data(args):
     
 def read_batch_data(args):
 
-    new_sample = os.path.join(args.misc_path,'batch_data.csv')
-    batches_file =os.path.join(args.misc_path,'batches.txt')
-    # write batch metadata for samples
-    if not os.path.isfile(new_sample):
-        sample_info = pd.read_csv(args.meta,sep = identify_separator(args.meta),usecols = ['BATCH','RELEASE','COHORT','FINNGENID']).rename(columns={"FINNGENID": "IID" })
-        # for axiom batches, replease release as cohort
-        axiom_mask =(sample_info['COHORT'] == 'Other') & sample_info['BATCH'].str.contains('Axiom')
-        sample_info.loc[axiom_mask,'COHORT'] = sample_info.loc[axiom_mask,'RELEASE']             
-
-        sample_info.loc[:,('BATCH','COHORT','IID')].to_csv(new_sample,index = False)
-        batches = sorted(set(sample_info.COHORT.values))
-        with open(batches_file,'wt') as o:
-            for batch in batches:
-                o.write(batch + '\n')
-        print(batches)
-        
-    sample_info = pd.read_csv(new_sample,sep = identify_separator(new_sample))
-    
+    sample_info = pd.read_csv(args.sample_info,sep = identify_separator(args.sample_info))
     sample_batch_dict = pd.Series(sample_info.COHORT.values,index=sample_info.IID).to_dict()
     return sample_batch_dict
 

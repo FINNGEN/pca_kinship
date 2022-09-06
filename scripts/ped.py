@@ -7,6 +7,8 @@ import numpy as np
 cpus = multiprocessing.cpu_count()
 from pca_scripts.color_dict import color_dict
 from pca_scripts import kinship_plots as kp
+from pca_scripts import batches
+
 
 degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3,'4th':4}
 
@@ -474,6 +476,10 @@ def main(args):
   
     args.plink_path = os.path.join(args.out_path,'plink')
     make_sure_path_exists(args.plink_path)
+
+    args.sample_info = args.meta
+    args.test = True
+    batches.batches(args)
     
     pretty_print("BUILD BED")
     build_bed(args,kwargs = '--maj-ref', name = 'maj_ref')
