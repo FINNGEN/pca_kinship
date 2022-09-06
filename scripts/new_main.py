@@ -1,6 +1,6 @@
 import argparse,os,shlex,subprocess,sys,logging,multiprocessing,time
 from utils import pretty_print,file_exists,make_sure_path_exists,log_levels
-from new_scripts import batches,tg
+from new_scripts import batches,tg,ethnic_outliers
 from pathlib import Path
 
 def main(args):
@@ -15,6 +15,15 @@ def main(args):
     make_sure_path_exists(args.plink_path)
     args.merged_plink_file = tg.merge_1k(args)
 
+
+    # PCA for genetic outliers
+    pretty_print('ETHNIC FINNS') 
+    args.pca_outlier_path = os.path.join(args.out_path, 'outliers_pca/')
+    make_sure_path_exists(args.pca_outlier_path)
+    args.annot_pop = ethnic_outliers.build_superpop(args)
+    args.tg_pca_file = ethnic_outliers.detect_ethnic_outliers(args)
+
+    
 if __name__=='__main__':
     
     parser=argparse.ArgumentParser(description="FinnGen PCA pipeline.")
@@ -26,6 +35,9 @@ if __name__=='__main__':
     #SAMPLE DATA
     parser.add_argument("--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
 
+
+    # NUMERIC PARAMS
+    parser.add_argument('--pca-components',type=int,help='Components needed for pca',default = 20)
     
     # GENERAL PARAMS
     parser.add_argument('-o',"--out_path",type = str, help = "Folder in which to save the results", required = True)

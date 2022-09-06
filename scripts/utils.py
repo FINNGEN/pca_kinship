@@ -124,7 +124,7 @@ def pretty_print(string,l = 30):
 def mapcount(filename):
 
     if not os.path.isfile(filename):
-        raise ValueError("File doesn't exist")
+        return 0
     
     try:
         return count_lines(filename)

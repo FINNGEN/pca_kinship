@@ -13,12 +13,16 @@ def merge_1k(args):
         cmd = f'plink --bfile {args.bed.replace(".bed","")} --bmerge {args.tg_bed.replace(".bed","")}  --memory {int(mem_mib)} --make-bed --out {merged_plink_file} --extract {args.bed.replace(".bed",".bim")} '
         args.logging.debug(cmd)
         subprocess.call(shlex.split(cmd))
-        cmd = f'plink2 --bfile {merged_plink_file}   --memory {int(mem_mib)} --freq --out {args.merged_plink_file} '
-        args.logging.debug(cmd)
-        subprocess.call(shlex.split(cmd))
 
     else:
         args.logging.info(f'{merged_plink_file} already generated.')
 
-    print(f"Total SNPs : {mapcount(args.merged_plink_file + '.bim')}")
+    if not os.path.isfile(merged_plink_file +'.afreq') or args.force:
+        args.force = True
+        cmd = f'plink2 --bfile {merged_plink_file}   --memory {int(mem_mib)} --freq --out {merged_plink_file} '
+        args.logging.debug(cmd)
+        subprocess.call(shlex.split(cmd))
+
+        
+    print(f"Total SNPs : {mapcount(merged_plink_file + '.bim')}")
     return merged_plink_file
