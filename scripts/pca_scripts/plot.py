@@ -193,7 +193,7 @@ def return_fin_eur_df(args):
     if not os.path.isfile(out_file):
         pc_avg = ["PC1_AVG",'PC2_AVG','PC3_AVG']
         df_list = []
-        eur_outliers = np.loadtxt(args.finngen_eur_outliers,dtype = str)
+        eur_outliers = np.loadtxt(args.finngen_eur_outliers,dtype = str,usecols = 0)
         for tag in ['eur','fin','finngen']:
             score_file =  os.path.join(args.pca_outlier_path, "eur_pca/", tag + '.sscore' )
             df =  pd.read_csv(score_file,sep = '\t',usecols = ['IID'] + pc_avg, dtype = {pc: np.float64 for pc in pc_avg}).rename(columns = {pc: pc.replace("_AVG","") for pc in pc_avg})
@@ -220,8 +220,8 @@ def plot_fin_eur_outliers(args):
     Plots eur/fin outlier detection results
     '''
 
-    if mapcount(args.finngen_eur_outliers) == 0:
-        return
+    #if mapcount(args.finngen_eur_outliers) == 0:
+        #return
     outlier_plot_data = os.path.join(args.plot_path,'plot_data')
     make_sure_path_exists(outlier_plot_data)
 
@@ -240,13 +240,13 @@ def plot_fin_eur_outliers(args):
     if not os.path.isfile(outliers_plot):
         plot_3d(pc_data,outliers_plot,tags,alpha_map= alpha_map,size_map = size_map,color_map = color_map,tag_column="TAG")
     else:
-        args.v_print(3,'eur outliers 3d plot already done.')
-
+        #args.v_print(3,'eur outliers 3d plot already done.')
+        pass
     if not os.path.isfile(outliers_2d):
         plot_2d(pc_data,outliers_2d,tags,alpha_map= alpha_map,size_map = size_map,color_map = color_map,tag_column="TAG", legend_location = "lower right",legend_fontsize=10)
     else:
-        args.v_print(3,'eur outliers pairwise plot already done.')
-
+        ##args.v_print(3,'eur outliers pairwise plot already done.')
+        pass
 
 
 #########################
@@ -275,8 +275,8 @@ def return_outliers_df(args):
         print(outlier_data.head())
         pc_data = pc_data.merge(outlier_data,on = "IID")
         print(pc_data.head())
-        pc_data.to_csv(out_file,index=False)
 
+        pc_data.to_csv(out_file,index=False)
     else:
         pc_data = pd.read_csv(out_file)
 
@@ -316,12 +316,14 @@ def plot_first_round_outliers(args):
         plot_3d(pc_data,ethnic_plot,tags,tag_column="TAG",color_map = color_map)
 
     else:
-        args.v_print(3,'ethnic outliers 3d plot already done.')
+        pass
+        #args.v_print(3,'ethnic outliers 3d plot already done.')
 
     if not os.path.isfile(ethnic_2d):
         plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map)
     else:
-        args.v_print(3,'ethnic outliers pairwise plot already done.')
+        pass
+        #args.v_print(3,'ethnic outliers pairwise plot already done.')
 
         
 #######################

@@ -19,7 +19,18 @@ inf_dict = {}
 inf_types = ['Dup/MZ','PO','FS','2nd','3rd']
 for i,key in enumerate(inf_types):inf_dict[key] = i
 
-def plot_degree_dist(args,filter_batches = None):
+
+def read_batch_data(args):
+
+    sample_batch_dict = {}
+    with open(args.sample_info)as i:
+        for line in i:
+            sample,tag = line.strip().split()
+            sample_batch_dict[sample] = tag
+    return sample_batch_dict
+
+
+def plot_degree_dist(args):
     """
     Plots degree distribution for each inftype
     """
@@ -45,15 +56,7 @@ def plot_degree_dist(args,filter_batches = None):
         deg_data = np.load(save_deg_data)
     else:
         G  = read_network(args)
-
-        # TEST FILTERING OUT LARGE FAMILIES
-        if filter_batches:
-            sample_batch_dict = read_batch_data(args)
-            for batch in filter_batches:
-                nodes = [sample for sample in sample_batch_dict if sample_batch_dict[sample] == batch]
-                print(len(nodes),batch)
-                G.remove_nodes_from(nodes)   
-
+    
         #CREATE ARRAY OF COUNTS
         deg_count = np.zeros(len(bins)+1)
         g_deg = [d for n,d in G.degree()]
@@ -194,6 +197,8 @@ def plot_kinship(args):
 
     ax.set_xticks(xPos[:-1])
     ax.set_xlabel('kinship')
+    plt.gcf().subplots_adjust(bottom=0.15)
+
     ax.set_ylabel(r'P(k)')
 
     ax2.set_yticks([0,1])
@@ -218,12 +223,13 @@ def plot_batch_data(args):
     if os.path.isfile(args.batch_fig):
         print(args.batch_fig + " already generated")
         return
+    
+    sample_batch_dict = read_batch_data(args)
+    batches = sorted(set(sample_batch_dict.values()))
 
     plot_data = os.path.join(args.misc_path, args.prefix +'_batches_degree.npy')
     if not os.path.isfile(plot_data):
         G = read_network(args)
-        sample_batch_dict = read_batch_data(args)
-        batches = sorted(set(sample_batch_dict.values()))
         print(batches)
         network_batch_data = np.zeros((len(batches),3))
         for i,batch in enumerate(batches):
@@ -238,7 +244,6 @@ def plot_batch_data(args):
         network_batch_data = np.load(plot_data)    
     
     print(network_batch_data)
-    batches = np.loadtxt(os.path.join(args.misc_path,'cohorts.txt'),dtype = str)
     n = int(np.average(network_batch_data[:,2]))
     max_avg_deg = network_batch_data[:,0].max()
     print(n,max_avg_deg)
@@ -253,11 +258,7 @@ def plot_batch_data(args):
     for i,elem in enumerate(network_batch_data):
         x,y,s = elem
         batch = batches[i]
-        axiom = True if batch in [f"R{i}" for i in range(2,20)] else False
-        if axiom:
-            ax.scatter(x,y,s/1000,label = batch,color = 'black',marker = next(mit),alpha = 0.5)
-        else:
-            ax.scatter(x,y,s/1000,label = batch)
+        ax.scatter(x,y,s/100,label = batch)
 
 
     # RANDOM GRAPH
@@ -280,11 +281,6 @@ def plot_batch_data(args):
     plt.close()
     print('done')
     
-def read_batch_data(args):
-
-    sample_info = pd.read_csv(args.sample_info,sep = identify_separator(args.sample_info))
-    sample_batch_dict = pd.Series(sample_info.COHORT.values,index=sample_info.IID).to_dict()
-    return sample_batch_dict
 
 
 def read_network(args):

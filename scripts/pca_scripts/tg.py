@@ -13,9 +13,14 @@ def merge_1k(args):
         cmd = f'plink --bfile {args.bed.replace(".bed","")} --bmerge {args.new_tg}  --memory {int(mem_mib)} --make-bed --out {args.merged_plink_file} '
         args.v_print(3,cmd)
         subprocess.call(shlex.split(cmd))
-        cmd = f'plink2 --bfile {args.merged_plink_file}   --memory {int(mem_mib)} --freq --out {args.merged_plink_file} '
+
+    if not os.path.isfile(args.merged_plink_file +'.afreq') or args.force:
+        args.force = True
+        cmd = f'plink2 --bfile {args.merged_plink_file}   --memory {int(mem_mib)} --freq --out {args.merged_plink_file}.freq'
         args.v_print(3,cmd)
         subprocess.call(shlex.split(cmd))
+        os.rename(f"{args.merged_plink_file}.freq.afreq",f"{args.merged_plink_file}.afreq")
+
 
     else:
         args.v_print(3,'thousand genomes/finngen shared plink file already generated.')
