@@ -94,6 +94,8 @@ if __name__=='__main__':
 
     #SAMPLE DATA
     parser.add_argument("--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
+    parser.add_argument("--meta", type=file_exists, help =  "Path to file with regionofbirth info", required = True)
+
 
     #KINSHIP
     parser.add_argument('--degree',type=int,help='Degree for Kinship',default = 2)

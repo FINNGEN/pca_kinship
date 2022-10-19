@@ -5,7 +5,7 @@ from collections import defaultdict as dd
 from collections import Counter
 import numpy as np
 cpus = multiprocessing.cpu_count()
-from pca_scripts import kinship_plots as kp
+from new_scripts import kinship_plots as kp
 
 degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3,'4th':4}
 
