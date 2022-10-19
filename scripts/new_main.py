@@ -1,14 +1,10 @@
 import argparse,os,shlex,subprocess,sys,logging,multiprocessing,time
-from utils import pretty_print,file_exists,make_sure_path_exists,log_levels,Logger
-from new_scripts import batches,tg,ethnic_outliers
+from utils import pretty_print,file_exists,make_sure_path_exists,log_levels,Logger,print_msg_box
+from new_scripts import batches,tg,ethnic_outliers,kinship,pca,plot
 from pathlib import Path
-from pca_scripts import plot
 
-def main(args):
+def main(args,do_plot=True):
 
-    # Get batch info
-    #pretty_print("BATCHES & SAMPLES")
-    #args.sample_info,args.cohorts,args.batches = batches.batches(args)
 
     #Merge bed and 1k genome
     pretty_print('1k GENOME')
@@ -24,17 +20,69 @@ def main(args):
     args.annot_pop,args.fg_tags = ethnic_outliers.build_superpop(args)
     aberrant_output,args.ethnic_outliers = ethnic_outliers.detect_ethnic_outliers(args)
     args.finngen_eur_outliers = ethnic_outliers.detect_eur_outliers(args,aberrant_output)
+    args.all_outliers = ethnic_outliers.all_outliers(args,[args.ethnic_outliers,args.finngen_eur_outliers])
+    
+    #KINSHIP DATA
+    pretty_print('KINSHIP')
+    args.kinPath = os.path.join(args.out_path,'kinship/')
+    make_sure_path_exists(args.kinPath)
+    kinship.kinship(args)
 
-    #PLOT
-    args.plot_path = os.path.join(args.out_path,'plots')
-    outlier_plot_data = os.path.join(args.plot_path,'plot_data')
-    #make_sure_path_exists(outlier_plot_data)
-    #make_sure_path_exists(args.plot_path)
-    #plot.plot_first_round_outliers(args)
-    #plot.plot_fin_eur_outliers(args)
+    #PCA
+    pretty_print('PCA')
+    args.pca_path = os.path.join(args.out_path,'pca/')
+    make_sure_path_exists(args.pca_path)
+    args.unrelated_file,args.related_file,args.rejected_file,args.final_samples = pca.build_inliers(args)
+    core_eigenvec = pca.fast_pca_inliers(args,args.unrelated_file)
+    args.eigenvec = pca.project_all(args,core_eigenvec)  
 
+    if do_plot:
+        #PLOT
+        pretty_print("PLOT")
+        args.plot_path = os.path.join(args.out_path,'plots')
+        outlier_plot_data = os.path.join(args.plot_path,'plot_data')
+        make_sure_path_exists(outlier_plot_data)
+        make_sure_path_exists(args.plot_path)
+        plot.plot_first_round_outliers(args)
+        plot.plot_fin_eur_outliers(args)
+        plot.plot_final_pca(args)
+        plot.pca_map(args)
     
     return True
+
+
+def release(args):
+
+    import glob
+    doc_path = os.path.join(args.out_path,'documentation')
+    data_path = os.path.join(args.out_path,'data')
+    for path in [data_path,doc_path]:
+        make_sure_path_exists(path)
+        for f in get_filepaths(path): os.remove(f) # clean path else shutil.copy might fail
+
+    # DOC
+    for pdf in glob.glob(os.path.join(args.plot_path,'*pdf')):
+        shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
+    outlier_pdf = os.path.join(args.pca_outlier_path, '1k_pca/',args.name + '_outlier_pcas.pdf')
+    shutil.copy(outlier_pdf,os.path.join(doc_path,os.path.basename(outlier_pdf)))
+    shutil.copy(args.log_file,os.path.join(doc_path,os.path.basename(args.log_file)))
+
+    # DATA
+    for f in [args.inlier_file,args.outlier_file,args.rejected_file,args.final_samples,args.duplicates,args.false_finns,args.eigenvec,args.pca_output_file + '.eigenval',args.pca_output_file + '_eigenvec.var']:
+        shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
+
+    # README
+    readme = os.path.join(args.data_path,'pca.README') 
+    with open(os.path.join(args.out_path,args.name + '_pca_readme'),'wt') as o, open(readme,'rt') as i:
+        with open(args.log_file) as tmp: summary = tmp.read()
+        word_map = {'[PREFIX]':args.name,'[SUMMARY]': summary,'[N_SNPS]':mapcount(args.bed.replace('.bed','.bim'))}
+        for line in i:
+            for kw in word_map:
+                if kw in line:
+                    line = line.replace(kw,str(word_map[kw]))
+            o.write(line)
+
+
     
 if __name__=='__main__':
     
@@ -47,6 +95,9 @@ if __name__=='__main__':
     #SAMPLE DATA
     parser.add_argument("--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
 
+    #KINSHIP
+    parser.add_argument('--degree',type=int,help='Degree for Kinship',default = 2)
+    parser.add_argument("--kin", type=file_exists, help = "File with king related individuals")
 
     # NUMERIC PARAMS
     parser.add_argument('--pca-components',type=int,help='Components needed for pca',default = 20)
@@ -63,6 +114,7 @@ if __name__=='__main__':
     parser.add_argument('--force',action = 'store_true',help = 'Replaces files by force',default = False)
     parser.add_argument('--test',action = "store_true",help = 'Flag for quick pca_outlier method without plots.')
     parser.add_argument("--cpus",type = int, help = "Number of cpus to use (default available cpus)", default =  multiprocessing.cpu_count())
+    parser.add_argument('--release',action = 'store_true',help = 'Flag for data release',default = False)
 
 
 
@@ -84,8 +136,12 @@ if __name__=='__main__':
     
     args.log_file =os.path.join(args.out_path ,args.name + '.log' )
     if success:
-        args.logging.getLogger().setLevel(logging.INFO)
+        args.logging.getLogger().setLevel(logging.WARNING)
         with  Logger(args.log_file,'wt'):
             args.force = False
-            #success = main(args)        
+            print_msg_box("\n~ SUMMARY ~\n",indent =30)
+            success = main(args,False)        
+            
+        if args.release:
+            release(args)
 

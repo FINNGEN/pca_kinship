@@ -1,4 +1,4 @@
-from utils import np,mapcount,basic_iterator,return_header,write_fam_samplelist,make_sure_path_exists,tmp_bash,identify_separator,superpop_dict
+from utils import np,mapcount,basic_iterator,return_header,write_fam_samplelist,make_sure_path_exists,tmp_bash,identify_separator,superpop_dict,merge_files
 import pandas as pd
 import csv
 from scipy.spatial.distance import cdist
@@ -8,8 +8,20 @@ from collections import defaultdict
 
 
 
-def all_outliers(ethnic_outliers,eur_outliers):
-    return None
+def all_outliers(args,rej_lists):
+    '''
+    Functions that merges all outliers into a final list.
+    '''
+    all_outliers = os.path.join(args.pca_outlier_path, args.name + '_total_ethnic_outliers.txt')
+    with open(all_outliers,'wt') as o:
+        for f in rej_lists:
+            with open(f,'rt') as i:
+                for line in i:
+                    o.write(line)
+
+    print(f'Total non-ethnic finns : {mapcount(all_outliers)}')
+
+    return all_outliers
 
 def detect_ethnic_outliers(args):
     '''
@@ -100,7 +112,6 @@ def aberrant_outliers(args,tg_pca_file):
 
     # RUN ABERRANT PROPER
     outlier_samples = tg_pca_file +'_outlier_samples.tsv'
-    print(outlier_samples)
     if not os.path.isfile(outlier_samples) or args.force:
         args.force = True
         iterations = ' 1000 -p' if args.test else ' 3000 '

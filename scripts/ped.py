@@ -7,7 +7,6 @@ import numpy as np
 cpus = multiprocessing.cpu_count()
 from pca_scripts import kinship_plots as kp
 
-
 degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3,'4th':4}
 
 ######################
@@ -106,26 +105,6 @@ def degree_summary(args):
     print('done.')
 
 
-######################
-#------IBD SEG-------#
-######################
-
-def ibdseg(args):
-    """
-    Returns segment info
-    """
-    args.segs = os.path.join(args.kinship_path,f"{args.prefix}.segments.gz")
-
-    if not os.path.isfile(args.segs) or mapcount(args.segs) < 1 or args.force:
-        args.force = True
-        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --ibdseg --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)}  '
-        print(cmd)
-        with open(args.kinship_log_file,'at') as f: subprocess.call(shlex.split(cmd),stdout = f)
-
-    else:
-        print("ibdseg already run")
-        
-   
 #######################
 #------PEDIGREE-------#
 #######################
@@ -142,7 +121,7 @@ def fix_fam(args):
     idx = [return_header(args.pheno_file).index(elem) for elem in ['FINNGENID','SEX']] # column indexes
     for fid,sex in basic_iterator(args.pheno_file,skiprows =1 ,columns = idx):
         sex_dict[fid] = '2' if sex == 'female' else '1'
-
+    args.new_fam =  os.path.join(args.out_path,args.prefix + '_pedigree.fam')
     print('generating new fam file ...')
     with open(args.new_fam,'wt') as o:
         for line in basic_iterator(args.kinship_bed.replace(".bed",'.fam')):
@@ -158,33 +137,35 @@ def king_pedigree(args):
     Return relatedness and build from king.
     """
 
-
     args.pedigree_log_file = os.path.join(args.out_path,args.prefix + '_pedigree.log')
+
     pedigree_root = os.path.join(args.pedigree_path, args.prefix +'_pedigree')
+    args.segs = pedigree_root + ".segments.gz"
     pedigree_parents_file = pedigree_root + 'updateparents.txt'
     pedigree_ids_file = pedigree_root + 'updateids.txt'
 
-    args.new_fam =  os.path.join(args.out_path,args.prefix + '_pedigree.fam') 
-       
-    if not os.path.isfile(pedigree_parents_file) or mapcount(pedigree_parents_file) < 1 or args.force:
-        args.force = True
-        fix_fam(args)
-        cmd= f'king -b {args.kinship_bed} --cpus {cpus}  --build --degree 3 --prefix {pedigree_root} --fam {args.new_fam} '
-        print(cmd)
-        with open(args.pedigree_log_file,'wt') as f: subprocess.call(shlex.split(cmd),stdout = f)
+    fix_fam(args)
 
-        # update fam file
-        cmd = f"plink2 --fam {args.new_fam} --update-ids {pedigree_ids_file}  --make-just-fam --out {args.new_fam.replace('.fam','')}"
-        print(cmd)
-        subprocess.call(shlex.split(cmd))
-        cmd = f"plink2  --fam {args.new_fam} --update-parents {pedigree_parents_file} --make-just-fam --out {args.new_fam.replace('.fam','')}"
-        print(cmd)
-        subprocess.call(shlex.split(cmd))
-    
+    king_pedigree_log = args.pedigree_log_file.replace('.log','.king.log')
+    if not os.path.isfile(pedigree_parents_file)  or not os.path.isfile(args.segs) or args.force:
+        args.force = True
+        cmd= f'king -b {args.kinship_bed} --cpus {cpus}  --build --degree 3 --prefix {pedigree_root} --fam {args.new_fam}  2>&1 | tee {king_pedigree_log}'
+        tmp_bash(cmd,True)
     else:
         print(f'pedigree files already generated')
 
+    #update fam file and create logs
+    tmp_log = args.pedigree_log_file.replace('.log','.plink.log')
+    with open(tmp_log,'wt') as f:
+        cmd = f"plink2 --fam {args.new_fam} --update-ids {pedigree_ids_file}  --make-just-fam --out {args.new_fam.replace('.fam','')}"
+        print(cmd)
+        cmd = f"plink2  --fam {args.new_fam} --update-parents {pedigree_parents_file} --make-just-fam --out {args.new_fam.replace('.fam','')}"
+        print(cmd)
+        subprocess.call(shlex.split(cmd),stdout = f,stderr =f)    
 
+        cmd = f"cat {king_pedigree_log} > {args.pedigree_log_file} &&  cat {tmp_log} >> {args.pedigree_log_file} && rm {tmp_log}"
+        tmp_bash(cmd)
+        
     args.newparents = mapcount(pedigree_parents_file)
     args.newfids = mapcount(pedigree_ids_file)
     args.pedigree_parents_file = pedigree_parents_file
@@ -192,163 +173,6 @@ def king_pedigree(args):
     print('done.')
      
 
-######################
-#------KINSHIP-------#
-######################
-
-def kinship(args):
-    """
-    Returns degree 3 kinship data.
-    """
-
-    args.kinship_log_file = os.path.join(args.out_path,args.prefix + '_kinship.log')  
-    args.kin_file = os.path.join(args.kinship_path,f"{args.prefix}.kin0")
-    args.dup_file = os.path.join(args.kinship_path,f"{args.prefix}.con")
-    args.all_segs = os.path.join(args.kinship_path,f"{args.prefix}allsegs.txt")
-    # RETURN RELATED AND PLOT FAMILIES
-    if not os.path.isfile(args.kin_file) or mapcount(args.kin_file) < 1 or args.force:
-        args.force = True
-        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot '
-        print(cmd)
-        with open(args.kinship_log_file,'wt') as f: subprocess.call(shlex.split(cmd),stdout = f)
-        # filter un/4th
-        kin_filter = args.kin_file.replace('kin0','tmp')
-        cmd = f"cat {args.kin_file} | grep -vw 'UN'  | grep -vw '4th' > {kin_filter} && mv {kin_filter} {args.kin_file} && rm {kin_filter}"
-        print(cmd)
-        tmp_bash(cmd)
-
-    else:
-        print("related file already generated")
-
-    # R SCRIPTS
-    if args.force:
-        scriptFile = NamedTemporaryFile(delete=True)
-        for f in [f for f in get_filepaths(args.kinship_path) if f.endswith('.R')]:
-            file_path,file_root,file_extension = get_path_info(f)
-            cmd = f" cat {f} | grep -v dev.off > {scriptFile.name} && Rscript {scriptFile.name} >& /dev/null  && ps2pdf {f.replace('.R','.ps')} {os.path.join(args.out_path,file_root)}.pdf && rm {f.replace('.R','.ps')} && rm {f} && rm *Rout"
-            print(cmd)
-            tmp_bash(cmd)
-
-            
-def degree_summary(args):
-    """
-    Creates a summary of lowest degrees
-    """
-    args.degree_table = os.path.join(args.kinship_path,f"{args.prefix}_degree_summary.txt")
-    if not os.path.isfile(args.degree_table) or args.force:
-        header = return_header(args.kin_file)
-        idx = [header.index(elem) for elem in ['ID1','ID2','InfType']]
-        print(idx)
-
-        degree_d = dd(lambda : np.inf)
-        for key,val in degree_dict.items():degree_d[key] = val
-        
-        sample_deg_dict = dd(lambda:np.inf)
-        deg_iterator = basic_iterator(args.kin_file,columns = idx,skiprows=1)
-        for id1,id2,inf in deg_iterator:
-            # match inftype to numerical degree
-            deg = degree_dict[inf] 
-            if deg < sample_deg_dict[id1] : sample_deg_dict[id1] = deg
-            if deg < sample_deg_dict[id2] : sample_deg_dict[id2] = deg       
-
-        with open(args.degree_table,'wt') as o:
-            o.write('|Degree | Sample Count' + '|\n')
-            o.write('|--|--|' + '\n')
-            count = Counter(sample_deg_dict.values())
-            for deg in sorted(count.keys()):
-                if deg < np.inf:
-                    o.write('|' + '|'.join(map(str,(deg,count[deg]))) + '|\n')         
-
-    else:
-        print(f"degree summary already generated")
-
-    print('done.')
-
-
-######################
-#------IBD SEG-------#
-######################
-
-def ibdseg(args):
-    """
-    Returns segment info
-    """
-    args.segs = os.path.join(args.kinship_path,f"{args.prefix}.segments.gz")
-
-    if not os.path.isfile(args.segs) or mapcount(args.segs) < 1 or args.force:
-        args.force = True
-        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --ibdseg --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)}  '
-        print(cmd)
-        with open(args.kinship_log_file,'at') as f: subprocess.call(shlex.split(cmd),stdout = f)
-
-    else:
-        print("ibdseg already run")
-        
-   
-#######################
-#------PEDIGREE-------#
-#######################
-    
-
-
-def fix_fam(args):
-    '''
-    Adds sex info into a new fam file
-    Sex code ('1' = male, '2' = female, '0' = unknown)
-    '''
-
-    sex_dict = dd(str)
-    idx = [return_header(args.pheno_file).index(elem) for elem in ['FINNGENID','SEX']] # column indexes
-    for fid,sex in basic_iterator(args.pheno_file,skiprows =1 ,columns = idx):
-        sex_dict[fid] = '2' if sex == 'female' else '1'
-
-    print('generating new fam file ...')
-    with open(args.new_fam,'wt') as o:
-        for line in basic_iterator(args.kinship_bed.replace(".bed",'.fam')):
-            new_sex = sex_dict[line[1]]
-            if new_sex: #maybe iid is missing
-                line[4] = str(new_sex)
-            o.write('\t'.join(line) + '\n')
-    print('done.')
-
-   
-def king_pedigree(args):
-    """
-    Return relatedness and build from king.
-    """
-
-
-    args.pedigree_log_file = os.path.join(args.out_path,args.prefix + '_pedigree.log')
-    pedigree_root = os.path.join(args.pedigree_path, args.prefix +'_pedigree')
-    pedigree_parents_file = pedigree_root + 'updateparents.txt'
-    pedigree_ids_file = pedigree_root + 'updateids.txt'
-
-    args.new_fam =  os.path.join(args.out_path,args.prefix + '_pedigree.fam') 
-       
-    if not os.path.isfile(pedigree_parents_file) or mapcount(pedigree_parents_file) < 1 or args.force:
-        args.force = True
-        fix_fam(args)
-        cmd= f'king -b {args.kinship_bed} --cpus {cpus}  --build --degree 3 --prefix {pedigree_root} --fam {args.new_fam} '
-        print(cmd)
-        with open(args.pedigree_log_file,'wt') as f: subprocess.call(shlex.split(cmd),stdout = f)
-
-        # update fam file
-        cmd = f"plink2 --fam {args.new_fam} --update-ids {pedigree_ids_file}  --make-just-fam --out {args.new_fam.replace('.fam','')}"
-        print(cmd)
-        subprocess.call(shlex.split(cmd))
-        cmd = f"plink2  --fam {args.new_fam} --update-parents {pedigree_parents_file} --make-just-fam --out {args.new_fam.replace('.fam','')}"
-        print(cmd)
-        subprocess.call(shlex.split(cmd))
-    
-    else:
-        print(f'pedigree files already generated')
-
-
-    args.newparents = mapcount(pedigree_parents_file)
-    args.newfids = mapcount(pedigree_ids_file)
-    args.pedigree_parents_file = pedigree_parents_file
-
-    print('done.')
      
 def release_log(args):
     """
@@ -487,9 +311,6 @@ def main(args):
     kinship(args)
     degree_summary(args)
 
-    pretty_print("IBDSEG")
-    ibdseg(args)
-    
     pretty_print("PEDIGREE")
     args.pedigree_path = os.path.join(args.out_path,'pedigree')
     make_sure_path_exists(args.pedigree_path)
