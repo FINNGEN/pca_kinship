@@ -1,46 +1,41 @@
 import os, shlex,subprocess
-from utils import mem_mib,mapcount
+from utils import mem_mib,mapcount,tmp_bash
 
 
-
-def merge_1k(args):
+def tg_bed(args):
     '''
-    Merge finngen plink with tg plink so I can run kinship.
+    Merge finngen plink with tg plink so I can run .
     '''
-    args.merged_plink_file = args.plink_path + '1k_' + args.name
-    if not os.path.isfile(args.merged_plink_file +'.bed') or args.force:
-        args.force = True
-        cmd = f'plink --bfile {args.bed.replace(".bed","")} --bmerge {args.new_tg}  --memory {int(mem_mib)} --make-bed --out {args.merged_plink_file} '
-        args.v_print(3,cmd)
-        subprocess.call(shlex.split(cmd))
 
-    if not os.path.isfile(args.merged_plink_file +'.afreq') or args.force:
-        args.force = True
-        cmd = f'plink2 --bfile {args.merged_plink_file}   --memory {int(mem_mib)} --freq --out {args.merged_plink_file}.freq'
-        args.v_print(3,cmd)
-        subprocess.call(shlex.split(cmd))
-        os.rename(f"{args.merged_plink_file}.freq.afreq",f"{args.merged_plink_file}.afreq")
-
-
-    else:
-        args.v_print(3,'thousand genomes/finngen shared plink file already generated.')
-
-    print(f"Total SNPs : {mapcount(args.merged_plink_file + '.bim')}")
-
-def subset_1k(args):
-
-    '''
-     Subset 1kg data to smaller data set to speed up merging
-    '''
-    args.new_tg = args.plink_path + '1k_new'
-    if not os.path.isfile(args.new_tg +'.bed') or args.force:
-        print(args.new_tg +'.bed')
-        args.force = True
-        cmd = f'plink2  --bfile {args.tg_bed.replace(".bed","")}  --extract {args.bed.replace(".bed",".bim")} --memory {int(mem_mib)} --make-bed --out {args.new_tg} '
-        print(cmd)
-        subprocess.call(shlex.split(cmd))
-    else:
-        args.v_print(3,'thousand genomes subset plink file already generated.')
-
-
+    merged_plink_file = args.plink_path + '1k_' + args.name
     
+    # build sample lists
+    fg_samples = merged_plink_file + ".fg.samples"
+    if not os.path.isfile(fg_samples) or args.force :
+        args.force = True
+        cmd = f'plink2 --bfile {args.bed.replace(".bed","")} --memory {int(mem_mib)} --write-samples --no-id-header --out {merged_plink_file} && cut -f1 {merged_plink_file}.id > {fg_samples}'
+        args.logging.debug(cmd)
+        tmp_bash(cmd)
+       
+    if not os.path.isfile(merged_plink_file +'.bed') or args.force:
+        args.force = True
+        args.logging.info(f"Building new plink data {merged_plink_file}")
+        cmd = f'plink --bfile {args.bed.replace(".bed","")} --bmerge {args.tg_bed.replace(".bed","")}  --memory {int(mem_mib)} --make-bed --out {merged_plink_file} --extract {args.bed.replace(".bed",".bim")} ' 
+        args.logging.debug(cmd)
+        subprocess.call(shlex.split(cmd))
+
+    else:
+        args.logging.info(f'{merged_plink_file} already generated.')
+
+    if not os.path.isfile(merged_plink_file +'.afreq') or args.force:
+        #args.force = True
+        cmd = f'plink2 --bfile {merged_plink_file}   --memory {int(mem_mib)} --write-samples --no-id-header --freq --out {merged_plink_file}.tmp '
+        args.logging.debug(cmd)
+        subprocess.call(shlex.split(cmd))
+        os.rename(f"{merged_plink_file}.tmp.afreq",f"{merged_plink_file}.afreq")
+        cmd = f"cut -f1 {merged_plink_file}.tmp.id > {merged_plink_file}.id && rm {merged_plink_file}.tmp.id"
+        tmp_bash(cmd)
+        
+    print(f"Total SNPs : {mapcount(merged_plink_file + '.bim')}")
+
+    return merged_plink_file

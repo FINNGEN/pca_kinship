@@ -8,177 +8,162 @@ sns.set(palette='Set2')
 import matplotlib.ticker as ticker
 import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
-import os,unidecode
+import os,unidecode,natsort
 from itertools import combinations
 from pca_scripts.color_dict import color_dict
-from utils import make_sure_path_exists,identify_separator,mapcount
+from utils import make_sure_path_exists,identify_separator,mapcount,tmp_bash
 from collections import Counter
 
-import conda
-conda_file_dir = conda.__file__
-conda_dir = conda_file_dir.split('lib')[0]
-proj_lib = os.path.join(os.path.join(conda_dir, 'share'), 'proj')
-os.environ["PROJ_LIB"] = proj_lib
-#from mpl_toolkits.basemap import Basemap
+
+##########################
+#--- PLOTTING PCA MAP ---#
+##########################
 
 
+import cartopy
+import cartopy.crs as crs
+import cartopy.feature as cfeature
+import cartopy.io.img_tiles as cimgt
+from cartopy.io.shapereader import Reader
+from cartopy.feature import ShapelyFeature
 
-#########################
-#--PLOTTING REGION PCA--#
-#########################
+locations = "Aland,Mariehamn,60.0971,19.9348\nCentral Finland,Jyvaskyla,62.2393,25.745951\nCentral Ostrobothnia,Kokkola,63.836583,23.133625\nEtelä-Savo,Mikkeli,61.687796,27.272657\nKainuu,Kajaani,64.224087,27.733423\nKanta-Häme,Hameenlinna,60.981091,24.458264\nKymenlaakso,Kotka,60.467423,26.945084\nLapland,Rovaniemi,66.497621,25.71921\nNorth Karelia,Joensuu,62.600816,29.760536\nNorth Ostrobothnia,Oulu,65.011873,25.471681\nOstrobothnia,Vaasa,63.081821,21.479812\nPirkanmaa,Tampere,61.498021,23.760312\nPohjois-Savo,Kuopio,62.824142,27.594561\nPäijät-Häme,Lahti,60.983876,25.656181\nSatakunta,Pori,61.486724,21.791002\nSouth Karelia,Lappeenranta,61.058242,28.18753\nSouth Ostrobothnia,Seinajoki,62.79541,22.844202\nUusimaa,Helsinki,60.167409,24.942568\nVarsinais-Suomi,Turku,60.451753,22.267052"
 
-def get_loc_df(args):
-
-    with open(os.path.join(args.data_path,'regionlocation.txt')) as i: data = [elem.strip() for elem in i.readlines()[1:]]
-    #data = [elem.strip() for elem in data[1:]]
+def get_loc_df():
+    """
+    Create region to lat/lon mapping
+    """
     a = {}
-    for entry in data:
+    for entry in locations.split('\n'):
         region,_,*coord = entry.split(',')
         a[region] = list(map(float,coord))
     loc_df = pd.DataFrame.from_dict(a,orient='index',columns=['lat','lon'])
     loc_df.index.names = ['regionofbirth']
     return loc_df
 
-def plot_map(args,pc_list = [1,2,3]):
 
-    save_path = os.path.join(args.plot_path, args.name + f"_pc_map.pdf")
-    if not args.meta or os.path.isfile(save_path):
-        return
+def save_data(region_data,eigenvec_data,out_path):
 
-    region_plot_data = os.path.join(args.plot_path,'plot_data')
+    out_csv = os.path.join(out_path,"region_pc.csv")
+    if not os.path.isfile(out_csv):
+        # read in location to lat/lon df
+        loc_df = get_loc_df()
 
-    pc_avg = os.path.join(args.plot_path,'plot_data','pc_averages.csv')
-    if not os.path.isfile(pc_avg):
-
-        # read region of births from samples and get counter
-        birth_df = pd.read_csv(args.meta,sep = identify_separator(args.meta), index_col='FINNGENID')[['regionofbirthname']]
-
-        # return valid regions
-        loc_df = get_loc_df(args)
-        print(loc_df)
-
-        usecols = ['PC' + str(pc) for pc in pc_list]
-        eigenvec = pd.read_csv(args.eigenvec, sep = '\t',index_col = 'IID')[usecols]
+        # read in birth data of samples
+        birth_df = pd.read_csv(region_data,sep='\t',usecols = ["FINNGENID","regionofbirthname"],index_col='FINNGENID')
+        usecols = ['PC' + str(pc) for pc in ["1","2","3"]]
+        eigenvec = pd.read_csv(eigenvec_data, sep = '\t',index_col = 'IID')[usecols]
         eigenvec.index.names = ['FINNGENID']
-        print(eigenvec.head())
         print(birth_df.head())
+        print(eigenvec.head())
 
+        #count people in each region
         count_df =  pd.concat([birth_df,eigenvec],join = 'inner',axis = 1)['regionofbirthname'].value_counts().to_frame('count')
         count_df.index.names = ['regionofbirth']
+        print(count_df.head())
 
+        # get averages of each region
         tmp_avg = pd.concat([birth_df,eigenvec],join = 'inner',axis = 1).set_index('regionofbirthname').groupby('regionofbirthname').mean()
         print(tmp_avg.head())
+        #merge averages with location
         region_avg = pd.concat([loc_df,tmp_avg,count_df],join = 'inner',axis = 1)
         region_avg.index.names = ['regionofbirth']
         print(region_avg)
-
-        region_avg.to_csv(pc_avg,index=True)
+        region_avg.to_csv(out_csv,index=True)
         print(region_avg.shape)
-    df = pd.read_csv(pc_avg,index_col = 0)
-    print(df)
+        
+    df = pd.read_csv(out_csv,index_col = 0)
+    return df,out_path
 
-    resize = 100/max(df['count'].values)
-    m = Basemap(projection='lcc', resolution= 'l', lat_0=np.average(df['lat']), lon_0=np.average(df['lon']), width=1E6, height=1.2E6)
+def get_axis_limits(ax, scale=.9):
+    return ax.get_xlim()[1]*(1-scale), ax.get_ylim()[1]*scale
+
+
+
+def plot_pca_map(df,args):
+
+    save_fig = os.path.join(args.plot_path, args.name + f"_pc_map.pdf")
+    print(save_fig)
+
+    if os.path.isfile(save_fig):
+        return
+
+    # set ip figure
+    pc_list = [1,2,3]
     fig = plt.figure()
     gs = mpl.gridspec.GridSpec(1,len(pc_list))
-    for i,pc in enumerate(list(map(str,pc_list))):
-        ax = fig.add_subplot(gs[0,i])
-        m.scatter(df['lon'].values,df['lat'].values, latlon=True,s=df['count'].values*resize,c=df['PC' + str(pc)].values,cmap='seismic', alpha=0.8, edgecolors = 'k', linewidth = .5,zorder= 10)
+    #set up min/max lon/lat
+    lat1,lon1,lat2,lon2 = min(df.lat)-1,min(df.lon)-1,max(df.lat)+4,max(df.lon)+2
+    print(lat1,lon1,lat2,lon2)
 
-        #make legend with dummy points
-        line1=[]
-        popList =[100, 1000, 10000]
-        for a in popList:
-            locLine= plt.scatter([], [], c='k', alpha=0.5, s= a*resize, label=str(a) + ' samples')
-            line1.append(locLine)
-        legend1 = plt.legend(line1,[str(a)+ ' samples' for a in popList],loc = 'lower right',
-        fontsize = 6)
+    # read in map
+    __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    fname = os.path.join(__location__, 'map','gadm36_FIN_2.shp')
+    shape_feature = ShapelyFeature(Reader(fname).geometries(),crs.PlateCarree())
+    stamen_terrain = cimgt.Stamen('terrain-background')
 
-        m.shadedrelief()
-        m.drawcoastlines(color='gray',linewidth = 0.3)
-        m.drawcountries(color='gray')
-    fig.savefig(save_path, bbox_inches = 'tight', pad_inches = 0)
+    # get extreme values of data for plotting
+    pc_columns = ["PC" + str(elem) for elem in pc_list]
+    values = df[pc_columns]
+    limits = values.min().min(),values.max().max()
+    minmax = abs(max(limits,key=abs))
+    vmin,vmax = -minmax,minmax
+
+    # resize dots based on population size
+    resize = 200./max(df['count'])
+    print(df['count'].values*resize)
+    
+    # turn count into
+    axes = []
+    for pc in pc_list:
+        print(pc)
+        ax = fig.add_subplot(gs[0,pc-1],projection=stamen_terrain.crs)
+        axes.append(ax)
+        ax.add_image(stamen_terrain, 8, zorder = 0)
+        ax.set_extent([lon1,lon2,lat1,lat2], crs=crs.PlateCarree())
+
+        transform = crs.PlateCarree()._as_mpl_transform(ax)
+        ax.annotate(str(pc), xy=(lon2- 0.05*(lon2-lon1),lat1+.08*(lat2-lat1)),xycoords=transform,ha='right', va='top')
+        ax.add_feature(shape_feature,linewidth = 0.2, facecolor = (1, 1, 1, 0),edgecolor = "black")
+        ax.add_feature(cartopy.feature.COASTLINE,linewidth=0.1,alpha =0.1)
+        ax.add_feature(cartopy.feature.BORDERS, linestyle=':',linewidth=0.3,alpha =0.5)
+        ax.add_feature(cartopy.feature.LAND)
+        ax.add_feature(cartopy.feature.LAKES, alpha=0.3)
+        ax.add_feature(cartopy.feature.RIVERS,alpha=0.3)
+
+        im = plt.scatter(x=df.lon, y=df.lat,s=df['count'].values*resize, alpha=1,transform=crs.PlateCarree(),c = df['PC' + str(pc)].values,cmap='seismic',vmin=vmin,vmax=vmax)
+        plt.scatter(x=df.lon, y=df.lat,s=df['count'].values*resize, alpha=1,facecolors='none', edgecolors='k',transform=crs.PlateCarree())
+
+    magnitude = np.floor(np.log10(max(df['count'].values)))
+    popList = [int(np.power(10,x)) for x in [magnitude -2, magnitude -1,magnitude]]
+    print(popList)
+    lines = [plt.scatter([], [], c='black', alpha=0.8, s= legend_pop*resize, label=str(legend_pop) + ' samples') for legend_pop in popList]
+    
+    legend1 = plt.legend(lines,[str(a)+ ' samples' for a in popList],loc = 'upper right',fontsize = 6)
+
+    p0 = axes[0].get_position().get_points().flatten()
+    p1 = axes[1].get_position().get_points().flatten()
+    p2 = axes[2].get_position().get_points().flatten()
+    ax_cbar = fig.add_axes([p0[0], .05, p2[2]-p0[0], 0.051])
+    cbar=plt.colorbar(im, cax=ax_cbar, orientation='horizontal',aspect=20)
+    cbar.set_ticks([vmin,0,vmax])
+    for t in cbar.ax.get_xticklabels():t.set_fontsize(4)
+
+    print('saving...')
+    fig.savefig(save_fig.replace('.pdf','.png'))
+    print('saving...')
+    fig.savefig(save_fig)
 
 
-
-########################
-#--PLOTTING FINAL PCA--#
-########################
-def plot_final_pca(args):
-
-    outlier_plot_data = os.path.join(args.plot_path,'plot_data')
-    make_sure_path_exists(outlier_plot_data)
-
-    pca_pairwise =os.path.join(args.plot_path,args.name+ '_final_pca_pairwise.pdf')
-    pca_plot =  os.path.join(args.plot_path,args.name+'_final_pca.pdf')
-    cohort_plot =  os.path.join(args.plot_path,args.name+'_cohorts.pdf')
-
-    if not np.all(list(map(os.path.isfile,[pca_pairwise,pca_plot,cohort_plot]))):
-        print('loading pc data...')
-        tags,pc_data = return_cohorts_df(args)
-        print('done')
-
-    if not os.path.isfile(pca_plot):
-        plot_3d(pc_data,pca_plot,tags)
-
-    pcs = ["PC1",'PC2','PC3']
-    if not os.path.isfile(cohort_plot):
-        print(cohort_plot)
-        plot_cohort_averages(pc_data,tags,cohort_plot,pcs)
-
-    if not os.path.isfile(pca_pairwise):
-        plot_2d(pc_data,pca_pairwise,tags)
+def pca_map(args):
+    loc_df = get_loc_df()
+    print(loc_df)
+    df,out_path = save_data(args.meta,args.eigenvec,os.path.join(args.plot_path,'plot_data'))
+    print(df)
+    plot_pca_map(df,args)
 
 
-def return_cohorts_df(args):
-    """
-    Returns a pandas df where the cohort info is in a column.
-    N.B. the eigenvec dataframe and the batches dataframe are merged on IID, so if the samples is missing in the batches metadata, it will not be plotted.
-    """
-
-    out_file = os.path.join(args.plot_path,'plot_data',"pc_cohorts.csv")
-    if not os.path.isfile(out_file):
-        pc_data = pd.read_csv(args.eigenvec,sep = '\t',usecols = ['IID',"PC1",'PC2','PC3'], dtype = {pc: np.float64 for pc in ["PC1",'PC2','PC3']})
-        print(len(pc_data))
-        cohort_data = pd.read_csv(args.sample_info)
-
-        # mapping smallest batchets to other if too many
-        while len(set(cohort_data['COHORT'].values))  > max(color_dict.keys()):
-            count = Counter(cohort_data['COHORT'].values)
-            smallest_cohort = min(count,key = count.get)
-            cohort_data.loc[cohort_data['COHORT'] == smallest_cohort,'COHORT'] = 'Other'
-
-        print(len(cohort_data))
-        pc_data = pc_data.merge(cohort_data,on = "IID")
-        pc_data.to_csv(out_file,index=False)
-
-    else:
-        pc_data = pd.read_csv(out_file)
-
-    final_cohorts = set(pc_data['COHORT'])
-    print(final_cohorts)
-    return sorted(final_cohorts),pc_data
-
-def plot_cohort_averages(pc_data,cohorts,out_file,pc_columns):
-
-    print('plotting cohorts...')
-    fig, axes = plt.subplots(nrows=len(pc_columns), sharex=True)
-
-    for i,column in enumerate(pc_columns):
-        ax = axes[i]
-        ax.set_ylabel(column)
-        violin_data = []
-        for i,cohort in enumerate(cohorts):
-            print(cohort)
-            cohort_data = pc_data[column][pc_data["COHORT"] == cohort]
-            violin_data.append(cohort_data)
-
-        sns.violinplot(data=violin_data,ax = ax,scale = 'count')
-        ax.set(xticklabels=cohorts)
-        ax.tick_params(axis='both', which='major', labelsize=6, rotation=45)
-
-    fig.savefig(out_file)
-    plt.close()
+    
 
 ##########################
 #--PLOTTING FIN EUR PCA--#
@@ -325,11 +310,95 @@ def plot_first_round_outliers(args):
         pass
         #args.v_print(3,'ethnic outliers pairwise plot already done.')
 
+
+
+########################
+#--PLOTTING FINAL PCA--#
+########################
+
+def plot_final_pca(args):
+
+    outlier_plot_data = os.path.join(args.plot_path,'plot_data')
+    make_sure_path_exists(outlier_plot_data)
+
+    pca_pairwise =os.path.join(args.plot_path,args.name+ '_final_pca_pairwise.pdf')
+    pca_plot =  os.path.join(args.plot_path,args.name+'_final_pca.pdf')
+    tag_plot =  os.path.join(args.plot_path,args.name+'_tags.pdf')
+
+    if not np.all(list(map(os.path.isfile,[pca_pairwise,pca_plot,tag_plot]))):
+        print('loading pc data...')
+        tags,pc_data = return_tags_df(args)
+        print('done')
+    if not os.path.isfile(pca_plot):
+        plot_3d(pc_data,pca_plot,tags)
+
+    pcs = ["PC1",'PC2','PC3']
+    if not os.path.isfile(tag_plot):
+        print(tag_plot)
+        plot_tag_averages(pc_data,tags,tag_plot,pcs)
+
+    if not os.path.isfile(pca_pairwise):
+        plot_2d(pc_data,pca_pairwise,tags)
+
+
         
+def return_tags_df(args):
+    """
+    Returns a pandas df where the cohort info is in a column.
+    N.B. the eigenvec dataframe and the batches dataframe are merged on IID, so if the samples is missing in the batches metadata, it will not be plotted.
+    """
+
+    out_file = os.path.join(args.plot_path,'plot_data',"pc_tags.csv")
+    if not os.path.isfile(out_file):
+        #read in pc_data
+        pc_data = pd.read_csv(args.eigenvec,sep = '\t',usecols = ['IID',"PC1",'PC2','PC3'], dtype = {pc: np.float64 for pc in ["PC1",'PC2','PC3']})
+        print(len(pc_data))
+        sample_data = pd.read_csv(args.sample_info,sep='\t',index_col=0,header=0,names=["IID","TAG"])
+        # mapping smallest batchets to other if too many
+        while len(set(sample_data['TAG'].values))  > max(color_dict.keys()):
+            count = Counter(sample_data['TAG'].values)
+            smallest_cohort = min(count,key = count.get)
+            sample_data.loc[sample_data['zAG'] == smallest_cohort,'TAG'] = 'Other'
+
+        
+        pc_data = pc_data.merge(sample_data,on = "IID")
+        print(pc_data)
+        pc_data.to_csv(out_file,index=False)
+
+    else:
+        pc_data = pd.read_csv(out_file)
+
+    final_cohorts = natsort.natsorted(set(pc_data['TAG']))
+    print(final_cohorts,len(pc_data))
+    return final_cohorts,pc_data
+
+
+def plot_tag_averages(pc_data,tags,out_file,pc_columns):
+
+    print('plotting tags...')
+    fig, axes = plt.subplots(nrows=len(pc_columns), sharex=True)
+
+    for i,column in enumerate(pc_columns):
+        ax = axes[i]
+        ax.set_ylabel(column)
+        violin_data = []
+        for i,tag in enumerate(tags):
+            tag_data = pc_data[column][pc_data["TAG"] == tag]
+            violin_data.append(tag_data)
+
+        sns.violinplot(data=violin_data,ax = ax,scale = 'count')
+        ax.set(xticklabels=tags)
+        ax.tick_params(axis='both', which='major', labelsize=6, rotation=45)
+
+    fig.savefig(out_file)
+    plt.close()
+
+
+       
 #######################
 #--PLOTTING TEMPLATE--#
 #######################
-def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = None,color_map= None,alpha_map = None,size_map = None,legend_fontsize = 4,label_fontsize = 5,random_samples = 5000,tag_column="COHORT",azim=-135,elev = 25,max_size = 3000,max_map = None):
+def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = None,color_map= None,alpha_map = None,size_map = None,legend_fontsize = 4,label_fontsize = 5,random_samples = 5000,tag_column="TAG",azim=-135,elev = 25,max_size = 3000,max_map = None):
 
     '''
     Inputs:
@@ -358,9 +427,6 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     max_sizes = dd(lambda:max_size)
     if max_map:
         for key in max_map: max_sizes[key] = max_map[key]
-    #tag colors
-    print(alphas)
-    print(sizes)
 
     if not color_map:
         color_maps = list(color_dict[len(tags)]['qualitative'].keys())
@@ -410,7 +476,7 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
 
 
 
-def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = None,color_map= None,alpha_map = None,size_map = None,legend_fontsize = 6,label_fontsize = 5,tag_column = "COHORT",max_size = 3000,max_map = None,axis_legend =2,legend_location = "lower left",rescale = 4):
+def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = None,color_map= None,alpha_map = None,size_map = None,legend_fontsize = 6,label_fontsize = 5,tag_column = "TAG",max_size = 3000,max_map = None,axis_legend =2,legend_location = "lower left",rescale = 4):
     '''
      Inputs:
     -- pc_file : name of file where to fetch data
@@ -443,9 +509,6 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     max_sizes = dd(lambda:max_size)
     if max_map:
         for key in max_map: max_sizes[key] = max_map[key]
-    #tag colors
-    print(alphas)
-    print(sizes)
 
     if not color_map:
         color_maps = list(color_dict[len(tags)]['qualitative'].keys())

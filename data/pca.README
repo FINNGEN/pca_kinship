@@ -33,9 +33,9 @@ Initially, a network of degree 2 relations is created from the kinship file prov
 This step calculates the final finngen PCA.
 
 Samples are devided into three categories:
-- inliers: unrelated samples of Finnish ancestry
-- outliers: samples of Finnish ancestry that are related to inliers
-- rejected: samples not of Finnish ancestry or non-inlier duplicates 
+- unrelated: unrelated samples of Finnish ancestry
+- related: samples of Finnish ancestry that are related to the previous group
+- rejected: samples not of Finnish ancestry or duplicates of samples in the core group
 
 Since SAIGE has shown some problems to handle duplicates, only the duplicates that survive the previous kinship step are kept. Ultimately only one duplicate instance of each duplicate clique is kept only if it's included in the maximal independent set.
 
@@ -55,8 +55,8 @@ Here's the summary of all relevant data:
 ### Data
 | File |  Description  |
 |---|---|
-| [PREFIX]_inliers.txt | Fam file of inliers used for final PCA  |
-| [PREFIX]_outliers.txt| Fam files of outliers projected onto inliers' space |
+| [PREFIX]_unrelated.txt | Fam file of unrelated Finnis used for final PCA  |
+| [PREFIX]_related.txt| Fam files of samples related to the previous group projected onto their PC space |
 | [PREFIX]_rejected.txt| Fam files of rejected samples |
 | [PREFIX]_duplicates.txt| List of ids of duplicates |
 | [PREFIX]_total_ethnic_outliers.txt| List of ids of samples not of Finnish ancestry |
