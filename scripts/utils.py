@@ -23,6 +23,12 @@ log_levels = {
 }
 
 
+def read_int(f):
+    try:
+        return int(open(f).read())
+    except:
+        return 0
+
 def return_open_func(f):
     '''
     Detects file extension and return proper open_func

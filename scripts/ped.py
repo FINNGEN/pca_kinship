@@ -1,10 +1,9 @@
-import os,pickle, subprocess,shlex,argparse,multiprocessing,shutil,glob
+import os,pickle, subprocess,shlex,argparse,shutil,glob,logging
 from pathlib import Path
-from utils import basic_iterator,return_header,mapcount,get_path_info,file_exists,make_sure_path_exists,cpus,tmp_bash,pretty_print,identify_separator,NamedTemporaryFile,get_filepaths,plot_stacked_bar
+from utils import basic_iterator,return_header,mapcount,get_path_info,file_exists,make_sure_path_exists,cpus,tmp_bash,pretty_print,NamedTemporaryFile,get_filepaths,read_int,log_levels,print_msg_box
 from collections import defaultdict as dd
 from collections import Counter
 import numpy as np
-cpus = multiprocessing.cpu_count()
 from pca_scripts import kinship_plots as kp
 
 degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3,'4th':4}
@@ -24,7 +23,7 @@ def build_bed(args,name='kinship',kwargs = ""):
         keep = f"--keep {args.fam}" if args.fam and mapcount(args.fam) > 100 else ""
         extract = f"--extract {args.extract}" if args.extract else ""
         cmd = f"plink2 --bfile {args.bed.replace('.bed','')} {extract} --threads {cpus}  --make-bed --out {args.kinship_bed.replace('.bed','')} {keep} {kwargs}"
-        print(cmd)
+        logging.debug(cmd)
         subprocess.call(shlex.split(cmd))    
 
     print('done.')
@@ -49,12 +48,12 @@ def kinship(args):
     if not os.path.isfile(args.kin_file) or mapcount(args.kin_file) < 1 or args.force:
         args.force = True
         cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot '
-        print(cmd)
+        logging.debug(cmd)
         with open(args.kinship_log_file,'wt') as f: subprocess.call(shlex.split(cmd),stdout = f)
         # filter un/4th
         kin_filter = args.kin_file.replace('kin0','tmp')
         cmd = f"cat {args.kin_file} | grep -vw 'UN'  | grep -vw '4th' > {kin_filter} && mv {kin_filter} {args.kin_file} && rm {kin_filter}"
-        print(cmd)
+        logging.debug(cmd)
         tmp_bash(cmd)
 
     else:
@@ -66,7 +65,7 @@ def kinship(args):
         for f in [f for f in get_filepaths(args.kinship_path) if f.endswith('.R')]:
             file_path,file_root,file_extension = get_path_info(f)
             cmd = f" cat {f} | grep -v dev.off > {scriptFile.name} && Rscript {scriptFile.name} >& /dev/null  && ps2pdf {f.replace('.R','.ps')} {os.path.join(args.out_path,file_root)}.pdf && rm {f.replace('.R','.ps')} && rm {f} && rm *Rout"
-            print(cmd)
+            logging.debug(cmd)
             tmp_bash(cmd)
 
             
@@ -158,13 +157,14 @@ def king_pedigree(args):
     tmp_log = args.pedigree_log_file.replace('.log','.plink.log')
     with open(tmp_log,'wt') as f:
         cmd = f"plink2 --fam {args.new_fam} --update-ids {pedigree_ids_file}  --make-just-fam --out {args.new_fam.replace('.fam','')}"
-        print(cmd)
+        logging.debug(cmd)
+        subprocess.call(shlex.split(cmd),stdout = f,stderr =f)    
         cmd = f"plink2  --fam {args.new_fam} --update-parents {pedigree_parents_file} --make-just-fam --out {args.new_fam.replace('.fam','')}"
-        print(cmd)
+        logging.debug(cmd)
         subprocess.call(shlex.split(cmd),stdout = f,stderr =f)    
 
         cmd = f"cat {king_pedigree_log} > {args.pedigree_log_file} &&  cat {tmp_log} >> {args.pedigree_log_file} && rm {tmp_log}"
-        tmp_bash(cmd)
+        tmp_bash(cmd,False)
         
     args.newparents = mapcount(pedigree_parents_file)
     args.newfids = mapcount(pedigree_ids_file)
@@ -208,40 +208,37 @@ def release_log(args):
         out_cmd = f" | wc -l >{tmp_file}"
         trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep -o '\\bF\w*_FG\w*'  {out_cmd}""" 
         tmp_bash(trio_cmd)
-        trios =  int(open(tmp_file).read())
+        trios =  read_int(tmp_file)
         o.write('|' + '|'.join(['Trios',str(trios),desc]) + '|\n')
         
         desc = "Total number of trios (i.e. counting multiples)"
         all_trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep  '\\bFG\w*_FG\w*' |  awk '{{count+=$1}} END {{print count}}' > {tmp_file}""" 
         tmp_bash(all_trio_cmd)
-        try:
-            all_trios =  int(open(tmp_file).read())
-        except:
-            all_trios = 0
+        all_trios = read_int(tmp_file)
         o.write('|' + '|'.join(['All Trios',str(all_trios),desc]) + '|\n')
 
         desc = "Parent - child duos where the other parent is not in Finngen"
         duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o '\\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'  {out_cmd} "
         tmp_bash(duos_cmd)
-        duos =  int(open(tmp_file).read())
+        duos =  read_int(tmp_file) 
         o.write('|' + '|'.join(['Duos',str(duos),desc]) + '|\n')
         
         desc = "Total number of duos counting multiples"
         all_duos_cmd =  f" {basic_cmd} |  uniq -c | grep  '\\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'| awk '{{count+=$1}} END {{print count}}' > {tmp_file} "
         tmp_bash(all_duos_cmd)
-        all_duos = int(open(tmp_file).read())
+        all_duos = read_int(tmp_file)  
         o.write('|' + '|'.join(['All Duos',str(all_duos),desc]) + '|\n')
         
         desc = "Number of families in which there are at least two finngen samples with same parents"
         sib_cmd = f"{basic_cmd} |  uniq -d  |  grep -v '0_' | grep -v '_0' {out_cmd}"
         tmp_bash(sib_cmd)
-        sibs = int(open(tmp_file).read())
+        sibs = read_int(tmp_file)  
         o.write('|' + '|'.join(['Siblings',str(sibs),desc]) + '|\n')
 
         desc = "Total number of siblings including multiple from each family"
         all_sib_cmd = f"{basic_cmd} |  uniq -cd  |  grep -v '0_' | grep -v '_0' | awk '{{count+=$1}} END {{print count}}' > {tmp_file}"
         tmp_bash(all_sib_cmd)
-        all_sibs = int(open(tmp_file).read())
+        all_sibs = read_int(tmp_file)
         o.write('|' + '|'.join(['All Siblings',str(all_sibs),desc]) + '|\n')    
 
 
@@ -328,6 +325,7 @@ def main(args):
         release_log(args)
         release(args)
 
+    return True
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="kinship analysis & pedigree")
@@ -343,8 +341,16 @@ if __name__ == "__main__":
     parser.add_argument('--force',help='Flag on whether to force run',action = "store_true")
     parser.add_argument('--release',help='Flag to structure output for release',action = "store_true")
     parser.add_argument('--plot',help='Flag to plot',action = "store_true")
+    # LOGGING ET AL.
+    parser.add_argument( "-log",  "--log",  default="warning", choices = log_levels, help=(  "Provide logging level. " "Example --log debug', default='warning'"))
 
     args = parser.parse_args()
+
+    # logging level
+    level = log_levels[args.log]
+    logging.basicConfig(level=level,format="%(levelname)s: %(message)s")
+    args.logging = logging
+
     if args.release: args.plot = True
     if args.plot:
         if not args.meta:
@@ -354,6 +360,11 @@ if __name__ == "__main__":
     args.misc_path = os.path.join(args.out_path,'misc')
     make_sure_path_exists(args.misc_path)
 
-    main(args)
+    success =main(args)
+    if success:
+        args.release= False
+        args.logging.getLogger().setLevel(logging.WARNING)
+        print_msg_box("\n~ SUMMARY ~\n",indent =30)
+        main(args)
     
     
