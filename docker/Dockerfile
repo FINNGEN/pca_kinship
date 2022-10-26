@@ -8,10 +8,10 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # I NEED PYTHON 3.7 (PANDAS ISSUES)
 ARG PY_VER=3.7
 
+
 RUN apt-get update && apt-get upgrade --yes
-RUN apt-get install libproj-dev proj-data proj-bin --yes &&  apt-get install libgeos-dev libjpeg-dev zlib1g-dev  --yes
-RUN apt install python${PY_VER} python${PY_VER}-dev  --yes
-RUN pip3 install --upgrade pip
+RUN apt-get install parallel libproj-dev proj-data proj-bin --yes &&  apt-get install libgeos-dev libjpeg-dev zlib1g-dev  --yes
+RUN apt install python${PY_VER} python${PY_VER}-dev  --yes && pip3 install --upgrade pip
 
 # R RELATED STUFF
 ADD ./docker/install_packages.R /usr/local/bin/
