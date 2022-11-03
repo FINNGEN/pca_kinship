@@ -205,6 +205,7 @@ def basic_iterator(f,separator =None,skiprows = 0,count = False,columns = 'all')
             line = return_columns(line,columns)
             row += 1   
             yield row,line
+            
 def return_columns(l,columns):
     '''
     Returns all columns, or rather the elements, provided the columns

@@ -150,8 +150,6 @@ def plot_pca_map(df,args):
     for t in cbar.ax.get_xticklabels():t.set_fontsize(4)
 
     print('saving...')
-    fig.savefig(save_fig.replace('.pdf','.png'))
-    print('saving...')
     fig.savefig(save_fig)
 
 

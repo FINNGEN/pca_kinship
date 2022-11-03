@@ -19,6 +19,7 @@ def tg_bed(args):
        
     if not os.path.isfile(merged_plink_file +'.bed') or args.force:
         args.force = True
+        
         args.logging.info(f"Building new plink data {merged_plink_file}")
         cmd = f'plink --bfile {args.bed.replace(".bed","")} --bmerge {args.tg_bed.replace(".bed","")}  --memory {int(mem_mib)} --make-bed --out {merged_plink_file} --extract {args.bed.replace(".bed",".bim")} ' 
         args.logging.debug(cmd)

@@ -39,13 +39,12 @@ This is the summary of [PREFIX] kinship family and family structure
 | [PREFIX]_kinship.afreq |Plink freq file with only pruned variants used for kinship |
 | [PREFIX]_pedigree.fam | Update fam file with updated FIDs and sex |
 
-
 #### Kinship data
 | File |  Description  |
 |---|---|
 | [PREFIX].kin0 | List of related couples |
 | [PREFIX].con | List of duplicate couples |
-| [PREFIX].segments.gz | Each row of the file provides information for one IBD segment in one pair of individuals. |
+| [PREFIX]_pedigree.segments.gz | Each row of the file provides information for one IBD segment in one pair of individuals. |
 
 
 ### Documentation
@@ -67,5 +66,5 @@ This is the summary of [PREFIX] kinship family and family structure
 | [PREFIX].log | Summary stats of kinship data |
 | [PREFIX]_kinship.log | Output of KING --related and --ibdseg flag |
 | [PREFIX]_pedigree.log | Output of KING --build flag |
-| [PREFIX]allsegs.txt | Segments used by KING |
+| finngen_R10allsegs.txt | Segments used by KING |
 

@@ -1,9 +1,13 @@
-import os,pickle, subprocess,shlex,argparse,shutil,glob,logging
+#!/usr/bin/env python3.7
+
+import os,pickle, subprocess,shlex,argparse,shutil,glob,logging,json
 from pathlib import Path
-from utils import basic_iterator,return_header,mapcount,get_path_info,file_exists,make_sure_path_exists,cpus,tmp_bash,pretty_print,NamedTemporaryFile,get_filepaths,read_int,log_levels,print_msg_box
+from utils import basic_iterator,return_header,mapcount,get_path_info,file_exists,make_sure_path_exists,cpus,tmp_bash,pretty_print,NamedTemporaryFile,get_filepaths,read_int,log_levels,print_msg_box,progressBar
 from collections import defaultdict as dd
 from collections import Counter
 import numpy as np
+import pandas as pd
+from collections import defaultdict
 from pca_scripts import kinship_plots as kp
 
 degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3,'4th':4}
@@ -40,16 +44,17 @@ def kinship(args):
     Returns degree 3 kinship data.
     """
 
+    # ALL OUTPUTS REQUIRED
     args.kinship_log_file = os.path.join(args.out_path,args.prefix + '_kinship.log')  
     args.kin_file = os.path.join(args.kinship_path,f"{args.prefix}.kin0")
     args.dup_file = os.path.join(args.kinship_path,f"{args.prefix}.con")
     args.all_segs = os.path.join(args.kinship_path,f"{args.prefix}allsegs.txt")
+    
     # RETURN RELATED AND PLOT FAMILIES
     if not os.path.isfile(args.kin_file) or mapcount(args.kin_file) < 1 or args.force:
         args.force = True
-        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot '
-        logging.debug(cmd)
-        with open(args.kinship_log_file,'wt') as f: subprocess.call(shlex.split(cmd),stdout = f)
+        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot |  tee -a {args.kinship_log_file}'
+        tmp_bash(cmd,True)
         # filter un/4th
         kin_filter = args.kin_file.replace('kin0','tmp')
         cmd = f"cat {args.kin_file} | grep -vw 'UN'  | grep -vw '4th' > {kin_filter} && mv {kin_filter} {args.kin_file} && rm {kin_filter}"
@@ -110,69 +115,72 @@ def degree_summary(args):
     
 
 
-def fix_fam(args):
+def sex_dict(sample_dict,pheno_file,bed_file):
     '''
-    Adds sex info into a new fam file
+    Updates the sex dictionary with gender info
     Sex code ('1' = male, '2' = female, '0' = unknown)
+    YEAR is year of birth obtained by subtracting the baseline age and baseline year of last update.
     '''
+    sex_col = 3
+    print(pheno_file,bed_file)
 
-    sex_dict = dd(str)
-    idx = [return_header(args.pheno_file).index(elem) for elem in ['FINNGENID','SEX']] # column indexes
-    for fid,sex in basic_iterator(args.pheno_file,skiprows =1 ,columns = idx):
-        sex_dict[fid] = '2' if sex == 'female' else '1'
-    args.new_fam =  os.path.join(args.out_path,args.prefix + '_pedigree.fam')
-    print('generating new fam file ...')
-    with open(args.new_fam,'wt') as o:
-        for line in basic_iterator(args.kinship_bed.replace(".bed",'.fam')):
-            new_sex = sex_dict[line[1]]
-            if new_sex: #maybe iid is missing
-                line[4] = str(new_sex)
-            o.write('\t'.join(line) + '\n')
-    print('done.')
-
-   
-def king_pedigree(args):
-    """
-    Return relatedness and build from king.
-    """
-
-    args.pedigree_log_file = os.path.join(args.out_path,args.prefix + '_pedigree.log')
-
-    pedigree_root = os.path.join(args.pedigree_path, args.prefix +'_pedigree')
-    args.segs = pedigree_root + ".segments.gz"
-    pedigree_parents_file = pedigree_root + 'updateparents.txt'
-    pedigree_ids_file = pedigree_root + 'updateids.txt'
-
-    fix_fam(args)
-
-    king_pedigree_log = args.pedigree_log_file.replace('.log','.king.log')
-    if not os.path.isfile(pedigree_parents_file)  or not os.path.isfile(args.segs) or args.force:
+    # DUMP SAMPLE DICT
+    sex_dict_file = os.path.join(args.misc_path,'fam_dict.json')
+    if not os.path.isfile(sex_dict_file) or args.force:
+        logging.info("Sex dict missing, loading data")
         args.force = True
-        cmd= f'king -b {args.kinship_bed} --cpus {cpus}  --build --degree 3 --prefix {pedigree_root} --fam {args.new_fam}  2>&1 | tee {king_pedigree_log}'
-        tmp_bash(cmd,True)
+        df = pd.read_csv(args.pheno_file,sep='\t',usecols=['FINNGENID','SEX','BL_YEAR','BL_AGE'],index_col=0)
+        #create YOB column
+        df['YEAR'] = df.BL_YEAR - df.BL_AGE
+        #update sex to match fam format
+        df.SEX.replace({"female":'2',"male":'1'},inplace=True)
+        #convert to dictionary
+        sex_dict = df[['YEAR','SEX']].to_dict('index')
+        with open(sex_dict_file,'w') as fp:
+            logging.info(f'Dumping to {sex_dict_file} ...')
+            json.dump(sex_dict,fp)
     else:
-        print(f'pedigree files already generated')
-
-    #update fam file and create logs
-    tmp_log = args.pedigree_log_file.replace('.log','.plink.log')
-    with open(tmp_log,'wt') as f:
-        cmd = f"plink2 --fam {args.new_fam} --update-ids {pedigree_ids_file}  --make-just-fam --out {args.new_fam.replace('.fam','')}"
-        logging.debug(cmd)
-        subprocess.call(shlex.split(cmd),stdout = f,stderr =f)    
-        cmd = f"plink2  --fam {args.new_fam} --update-parents {pedigree_parents_file} --make-just-fam --out {args.new_fam.replace('.fam','')}"
-        logging.debug(cmd)
-        subprocess.call(shlex.split(cmd),stdout = f,stderr =f)    
-
-        cmd = f"cat {king_pedigree_log} > {args.pedigree_log_file} &&  cat {tmp_log} >> {args.pedigree_log_file} && rm {tmp_log}"
-        tmp_bash(cmd,False)
-        
-    args.newparents = mapcount(pedigree_parents_file)
-    args.newfids = mapcount(pedigree_ids_file)
-    args.pedigree_parents_file = pedigree_parents_file
-
+                     # read in json
+        logging.info(f"Reading in {sex_dict_file}")
+        with open(sex_dict_file) as i:
+            sex_dict = json.load(i)
+    logging.info(len(sex_dict))
+    
+    #map to defaultdict for missing values
+    sex_dict = defaultdict(lambda:'0')
+    fam_iterator = basic_iterator( bed_file.replace('bed','fam'),columns =0,count = True)
+    logging.info("Updating sex info...")
+    samples = mapcount(bed_file.replace('bed','fam'))
+    for i,sample in fam_iterator:
+        progressBar(i,samples)
+        sample_dict[sex_col] = sex_dict[sample]
     print('done.')
+    return sample_dict
      
 
+def update_fam(args):
+    """
+    Function that updates for the samples the parents and sex info
+    """
+    # this are going to be the fields replace in the fam file
+    parent_dict = defaultdict(lambda : ['0','0','0','-9'])
+    # now i need to get the PO pairs
+    parent_dict = sex_dict(parent_dict,args.pheno_file,args.bed)
+    print(parent_dict)
+    return 
+    total_pairs = mapcount(args.kin_file)
+    columns = [return_header(args.kin_file).index(elem) for elem in ['ID1','ID2','InfType']]
+    kinship_iterator = basic_iterator(args.kin_file,skiprows=1,columns=columns,count = True)
+    logging.info(f"{total_pairs} to loop")
+    for i,data in kinship_iterator:
+        progressBar(i,total_pairs)
+        print(data[2])
+        if data[2] != 'PO':continue 
+        ages = [sample_dict[sample]['YEAR'] for sample in data[:2]]
+        child,parent = [elem[0] for elem in sorted(zip(data[:2],ages),key = lambda x:x[1],reverse=True)]
+        parent_dict[child] = parent
+    
+    
      
 def release_log(args):
     """
@@ -297,7 +305,6 @@ def main(args):
     make_sure_path_exists(args.plink_path)
 
     args.sample_info = args.meta
-    args.test = True
     
     pretty_print("BUILD BED")
     build_bed(args,kwargs = '--maj-ref', name = 'maj_ref')
@@ -308,24 +315,23 @@ def main(args):
     kinship(args)
     degree_summary(args)
 
-    pretty_print("PEDIGREE")
-    args.pedigree_path = os.path.join(args.out_path,'pedigree')
-    make_sure_path_exists(args.pedigree_path)
-    king_pedigree(args)
-
+    pretty_print("FAM FIX")
+    update_fam(args)
+    
     pretty_print("PLOTS")
     if args.plot:
         kp.plot_kinship(args)
         kp.plot_degree_dist(args)
         kp.plot_batch_data(args)
-    
+        
     if args.release:
-        pretty_print("BUILD BED PLINK2")
-        build_bed(args,kwargs = '--freq', name = 'kinship')
-        release_log(args)
-        release(args)
+        pretty_print("RELEASE")
+        #build_bed(args,kwargs = '--freq', name = 'kinship')
+        ##release_log(args)
+        ###release(args)
 
     return True
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="kinship analysis & pedigree")
@@ -351,6 +357,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=level,format="%(levelname)s: %(message)s")
     args.logging = logging
 
+    # 
     if args.release: args.plot = True
     if args.plot:
         if not args.meta:
@@ -361,10 +368,11 @@ if __name__ == "__main__":
     make_sure_path_exists(args.misc_path)
 
     success =main(args)
-    if success:
-        args.release= False
-        args.logging.getLogger().setLevel(logging.WARNING)
-        print_msg_box("\n~ SUMMARY ~\n",indent =30)
-        main(args)
+    # if success:
+    #     args.release= False
+    #     args.force = False
+    #     args.logging.getLogger().setLevel(logging.WARNING)
+    #     print_msg_box("\n~ SUMMARY ~\n",indent =30)
+    #     main(args)
     
     

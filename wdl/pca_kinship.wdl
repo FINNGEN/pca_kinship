@@ -100,7 +100,7 @@ task pca {
   String? final_docker = if defined(pca_docker) then pca_docker else docker
   command <<<
   df -h
-    python3 /scripts/pca.py \
+    python3.7 /scripts/pca.py \
     --bed  ~{bed_file} \
     --tg-bed ~{tg_bed} \
     --kin ~{kin_file} \
@@ -145,11 +145,11 @@ task kinship{
   }
   
   Int disk_size = ceil(size(bed_file,"GB"))*4 + 20
-  Int mem = ceil(size(bed_file,"GB")) + 10
+  Int mem = ceil(size(bed_file,"GB")) + 500
 
   String? final_docker = if defined(kinship_docker) then kinship_docker else docker
   command {
-    python3  /scripts/ped.py \
+    python3.7  /scripts/ped.py \
     --bed ~{bed_file} \
     --out-path . \
     --prefix ~{prefix} \

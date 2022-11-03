@@ -190,7 +190,7 @@ def build_superpop(args):
                 tag_dict[sample] = pop if pop =='FIN'else superpop_dict[pop]
 
             # read in sample data
-            for sample,tag in basic_iterator(args.sample_info,separator =identify_separator(args.sample_info),skiprows=1):
+            for sample,tag in basic_iterator(args.sample_info,separator =identify_separator(args.sample_info)):
                 tag_dict[sample] = tag
 
             # now i loop through all samples fro merged plink file and assign to each id a tag
