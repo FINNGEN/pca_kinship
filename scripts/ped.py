@@ -9,8 +9,7 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict
 from pca_scripts import kinship_plots as kp
-
-degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3,'4th':4}
+degree_dict = {'Dup/MZ':0,'PO':1,'FS':1,'2nd':2,'3rd':3}
 
 ######################
 #---BUILD BED FILE---#
@@ -31,10 +30,7 @@ def build_bed(args,name='kinship',kwargs = ""):
         subprocess.call(shlex.split(cmd))    
 
     print('done.')
-
-
-
-    
+   
 ######################
 #------KINSHIP-------#
 ######################
@@ -48,12 +44,13 @@ def kinship(args):
     args.kinship_log_file = os.path.join(args.out_path,args.prefix + '_kinship.log')  
     args.kin_file = os.path.join(args.kinship_path,f"{args.prefix}.kin0")
     args.dup_file = os.path.join(args.kinship_path,f"{args.prefix}.con")
-    args.all_segs = os.path.join(args.kinship_path,f"{args.prefix}allsegs.txt")
+    
     
     # RETURN RELATED AND PLOT FAMILIES
-    if not os.path.isfile(args.kin_file) or mapcount(args.kin_file) < 1 or args.force:
+    Path(args.dup_file).touch() #there could be no duplicates
+    if not os.path.isfile(args.kin_file) or mapcount(args.kin_file)  < 1 or args.force:
         args.force = True
-        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot |  tee -a {args.kinship_log_file}'
+        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate   --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot |  tee -a {args.kinship_log_file}'
         tmp_bash(cmd,True)
         # filter un/4th
         kin_filter = args.kin_file.replace('kin0','tmp')
@@ -64,6 +61,7 @@ def kinship(args):
     else:
         print("related file already generated")
 
+
     # R SCRIPTS
     if args.force:
         scriptFile = NamedTemporaryFile(delete=True)
@@ -73,7 +71,6 @@ def kinship(args):
             logging.debug(cmd)
             tmp_bash(cmd)
 
-            
 def degree_summary(args):
     """
     Creates a summary of lowest degrees
@@ -114,18 +111,15 @@ def degree_summary(args):
 #######################
     
 
-
-def sex_dict(sample_dict,pheno_file,bed_file):
+def return_sample_dict(args):
     '''
-    Updates the sex dictionary with gender info
+    Reutns sex and YOB dictionaries so i can update sex and know if parent is mother/father based on age.
     Sex code ('1' = male, '2' = female, '0' = unknown)
     YEAR is year of birth obtained by subtracting the baseline age and baseline year of last update.
     '''
-    sex_col = 3
-    print(pheno_file,bed_file)
 
-    # DUMP SAMPLE DICT
-    sex_dict_file = os.path.join(args.misc_path,'fam_dict.json')
+    # Read in sex and create YEAR column
+    sex_dict_file = os.path.join(args.misc_path,'fam_dict.csv')
     if not os.path.isfile(sex_dict_file) or args.force:
         logging.info("Sex dict missing, loading data")
         args.force = True
@@ -135,53 +129,81 @@ def sex_dict(sample_dict,pheno_file,bed_file):
         #update sex to match fam format
         df.SEX.replace({"female":'2',"male":'1'},inplace=True)
         #convert to dictionary
-        sex_dict = df[['YEAR','SEX']].to_dict('index')
-        with open(sex_dict_file,'w') as fp:
-            logging.info(f'Dumping to {sex_dict_file} ...')
-            json.dump(sex_dict,fp)
+        df[['YEAR','SEX']].to_csv(sex_dict_file)
     else:
-                     # read in json
+        # read in df
         logging.info(f"Reading in {sex_dict_file}")
-        with open(sex_dict_file) as i:
-            sex_dict = json.load(i)
-    logging.info(len(sex_dict))
-    
-    #map to defaultdict for missing values
-    sex_dict = defaultdict(lambda:'0')
-    fam_iterator = basic_iterator( bed_file.replace('bed','fam'),columns =0,count = True)
-    logging.info("Updating sex info...")
-    samples = mapcount(bed_file.replace('bed','fam'))
-    for i,sample in fam_iterator:
-        progressBar(i,samples)
-        sample_dict[sex_col] = sex_dict[sample]
-    print('done.')
-    return sample_dict
-     
+        df = pd.read_csv(sex_dict_file,index_col=0)
 
+    logging.debug(df.head)
+    data_dicts = df.to_dict()
+    # some phenos are missing, so sex needs to be 0 by default
+    sex_dict = defaultdict(lambda : "0",{key:str(value) for key,value in data_dicts['SEX'].items()})
+    age_dict = data_dicts['YEAR']
+
+    return sex_dict,age_dict
+    
 def update_fam(args):
     """
-    Function that updates for the samples the parents and sex info
+    Function that creates a new fam file with updated parents and sex
+    1.Family ID ('FID')
+    2.Within-family ID ('IID'; cannot be '0')
+    3.Within-family ID of father ('0' if father isn't in dataset)
+    4;Within-family ID of mother ('0' if mother isn't in dataset)
+    5.Sex code ('1' = male, '2' = female, '0' = unknown)
+    6.Phenotype value ('1' = control, '2' = case, '-9'/'0'/non-numeric = missing data if case/control)
     """
-    # this are going to be the fields replace in the fam file
-    parent_dict = defaultdict(lambda : ['0','0','0','-9'])
+
+    new_fam =  os.path.join(args.out_path,args.prefix + '_pedigree')
+    args.new_fam = new_fam + '.fam'
+    if os.path.isfile(args.new_fam) and not args.force:
+        print(f"{args.new_fam} already updated")
+        return
+  
+    # this are going to be the fields replaced in the fam file
+    parent_fam_dict = defaultdict(lambda : ['0','0'])
+    sex_dict,age_dict = return_sample_dict(args)
+    logging.debug(f"{len(sex_dict)} {len(age_dict)}")
     # now i need to get the PO pairs
-    parent_dict = sex_dict(parent_dict,args.pheno_file,args.bed)
-    print(parent_dict)
-    return 
     total_pairs = mapcount(args.kin_file)
     columns = [return_header(args.kin_file).index(elem) for elem in ['ID1','ID2','InfType']]
     kinship_iterator = basic_iterator(args.kin_file,skiprows=1,columns=columns,count = True)
-    logging.info(f"{total_pairs} to loop")
+    logging.info(f"{total_pairs} pairs to loop over.")
     for i,data in kinship_iterator:
         progressBar(i,total_pairs)
-        print(data[2])
-        if data[2] != 'PO':continue 
-        ages = [sample_dict[sample]['YEAR'] for sample in data[:2]]
-        child,parent = [elem[0] for elem in sorted(zip(data[:2],ages),key = lambda x:x[1],reverse=True)]
-        parent_dict[child] = parent
+        # work only with PO pairs
+        if data[2] != 'PO':continue
+        # if pheno data is missing ignore the couples since I cannot establish sex and age
+        if not all([sample in sex_dict for sample in data[:2]]): continue
+        # infer who is the parent from age
+        age_data = zip(data[:2],[age_dict[sample] for sample in data[:2]])
+        child,parent = [elem[0] for elem in sorted(age_data,key = lambda x:x[1],reverse=True)]
+        # first entry is father, second mother, male sex is 1, female 2, so i need to shift sex code down by 1 to get index
+        parent_index = int(sex_dict[parent]) - 1
+        parent_fam_dict[child][parent_index] = parent
+
+    print('\nFam dict created')
+
     
-    
-     
+    tmp_fam =  new_fam + '.tmp'
+    # loop through original fam file and update it
+    n = mapcount(args.bed.replace('bed','fam'))
+    with open(tmp_fam,'wt') as o:
+        fam_iterator = basic_iterator(args.bed.replace('bed','fam'),count = True)
+        for count,sample_data in fam_iterator:
+            progressBar(count,n)
+            # read in id
+            sample =sample_data[1]
+            sample_data[2:4] = parent_fam_dict[sample]
+            sample_data[4] = sex_dict[sample]
+            # get parent data
+            o.write('\t'.join(sample_data) + '\n')
+       
+    # build fam with plink2 command to be safe
+    cmd = f"plink2 --bfile {args.bed.replace('.bed','')} --update-sex {tmp_fam} col-num=5 --update-parents {tmp_fam} --make-just-fam --out {new_fam}"
+    logging.debug(cmd)
+    subprocess.call(shlex.split(cmd))
+
 def release_log(args):
     """
     Logs a bunch of stuff for the README.
@@ -207,44 +229,45 @@ def release_log(args):
 
         
         # DUOS/TRIOS ETC
-        o.write('\n|Family Structure Type|Count|Description|\n')
+        o.write('\n|Family Structure Type|Count|Description|\n') 
         o.write('|--|--|--|\n')
 
-        desc_list = []
-        desc ='Number of Finngen_mother Finngen_father couples who have at least one child in Finngen'
+        # basic bash commands to run over the new fame file
         basic_cmd = f"""cat {args.new_fam} |  awk '{{print $3"_"$4}}' | sort  """
-        out_cmd = f" | wc -l >{tmp_file}"
-        trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep -o '\\bF\w*_FG\w*'  {out_cmd}""" 
+        out_cmd = f"  >{tmp_file}"
+
+        desc ='Number of Finngen_mother Finngen_father couples who have at least one child in Finngen'
+        trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep -o '\\bF\w*_FG\w*'  | wc -l {out_cmd}""" 
         tmp_bash(trio_cmd)
         trios =  read_int(tmp_file)
         o.write('|' + '|'.join(['Trios',str(trios),desc]) + '|\n')
         
         desc = "Total number of trios (i.e. counting multiples)"
-        all_trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep  '\\bFG\w*_FG\w*' |  awk '{{count+=$1}} END {{print count}}' > {tmp_file}""" 
+        all_trio_cmd =  f""" {basic_cmd} |    grep  '\\bFG\w*_FG\w*' |  wc -l  {out_cmd}""" 
         tmp_bash(all_trio_cmd)
         all_trios = read_int(tmp_file)
         o.write('|' + '|'.join(['All Trios',str(all_trios),desc]) + '|\n')
 
         desc = "Parent - child duos where the other parent is not in Finngen"
-        duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o '\\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'  {out_cmd} "
+        duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o  '\\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*' | wc -l  {out_cmd} "
         tmp_bash(duos_cmd)
         duos =  read_int(tmp_file) 
         o.write('|' + '|'.join(['Duos',str(duos),desc]) + '|\n')
         
         desc = "Total number of duos counting multiples"
-        all_duos_cmd =  f" {basic_cmd} |  uniq -c | grep  '\\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*'| awk '{{count+=$1}} END {{print count}}' > {tmp_file} "
+        all_duos_cmd =  f" {basic_cmd} |   grep  '\\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*' | wc -l   {out_cmd} "
         tmp_bash(all_duos_cmd)
         all_duos = read_int(tmp_file)  
         o.write('|' + '|'.join(['All Duos',str(all_duos),desc]) + '|\n')
         
         desc = "Number of families in which there are at least two finngen samples with same parents"
-        sib_cmd = f"{basic_cmd} |  uniq -d  |  grep -v '0_' | grep -v '_0' {out_cmd}"
+        sib_cmd = f"{basic_cmd} |  uniq -cd  |  grep -v '0_' | grep -v '_0' | wc -l {out_cmd} "
         tmp_bash(sib_cmd)
         sibs = read_int(tmp_file)  
         o.write('|' + '|'.join(['Siblings',str(sibs),desc]) + '|\n')
 
         desc = "Total number of siblings including multiple from each family"
-        all_sib_cmd = f"{basic_cmd} |  uniq -cd  |  grep -v '0_' | grep -v '_0' | awk '{{count+=$1}} END {{print count}}' > {tmp_file}"
+        all_sib_cmd = f"{basic_cmd} | uniq -cd |   grep -v '0_' | grep -v '_0' | awk '{{count+=$1}} END {{print count}}' {out_cmd}"
         tmp_bash(all_sib_cmd)
         all_sibs = read_int(tmp_file)
         o.write('|' + '|'.join(['All Siblings',str(all_sibs),desc]) + '|\n')    
@@ -256,27 +279,32 @@ def release(args):
 
     doc_path = os.path.join(args.out_path,'documentation')
     data_path = os.path.join(args.out_path,'data')
+    #create paths
     for path in [doc_path,data_path]:
         make_sure_path_exists(path)
         for f in get_filepaths(path): os.remove(f) # clean path else shutil.copy might fail
 
     # DOC
     for pdf in glob.glob(os.path.join(args.out_path,'*pdf')):# copy figures
+        print('moving figures')
         shutil.copy(pdf,os.path.join(doc_path,os.path.basename(pdf)))
         
-    for log in [args.log_file,args.kinship_log_file,args.pedigree_log_file,args.degree_table,args.all_segs]:#copy log files
+    for log in [args.log_file,args.kinship_log_file,args.degree_table]:#copy log files
+        print('moving logs')
         shutil.copy(log,os.path.join(doc_path,os.path.basename(log)))
 
     # DATA
-    for f in [args.kin_file,args.dup_file,args.segs]: # copy KING outputs
+    for f in [args.kin_file,args.dup_file]: # copy KING outputs
+        print('moving kinship files')
         shutil.copy(f,os.path.join(data_path,os.path.basename(f)))       
-
     for ending in ('.bed','.fam','.bim','.afreq') : #copy plink files
+        print('moving plink files')
         f = args.kinship_bed.replace('.bed',ending)
         shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
     shutil.copy(args.new_fam,os.path.join(data_path,os.path.basename(args.new_fam)))
 
     # README FILE
+    print('building readme...')
     parent_path = Path(os.path.realpath(__file__)).parent.parent
     readme = os.path.join(parent_path,'data','kinship.README')    
     with open( os.path.join(args.out_path,args.prefix + '_kinship_readme'),'wt') as o, open(readme,'rt') as i:
@@ -284,8 +312,6 @@ def release(args):
         with open(args.degree_table) as tmp:degree_summary = tmp.read()  
         word_map = {
             '[PREFIX]':args.prefix,
-            '[NEW_PARENTS]':args.newparents,
-            '[NEW_FID]':args.newfids,
             '[RELATED_COUPLES]':mapcount(args.kin_file) -1,
             '[DUPLICATES]':mapcount(args.kin_file.replace('kin0','con')) -1,
             '[SUMMARY]': summary,
@@ -326,9 +352,9 @@ def main(args):
         
     if args.release:
         pretty_print("RELEASE")
-        #build_bed(args,kwargs = '--freq', name = 'kinship')
-        ##release_log(args)
-        ###release(args)
+        build_bed(args,kwargs = '--freq', name = 'kinship')
+        release_log(args)
+        release(args)
 
     return True
 
@@ -368,11 +394,11 @@ if __name__ == "__main__":
     make_sure_path_exists(args.misc_path)
 
     success =main(args)
-    # if success:
-    #     args.release= False
-    #     args.force = False
-    #     args.logging.getLogger().setLevel(logging.WARNING)
-    #     print_msg_box("\n~ SUMMARY ~\n",indent =30)
-    #     main(args)
+    if success:
+        args.release= False
+        args.force = False
+        args.logging.getLogger().setLevel(logging.WARNING)
+        print_msg_box("\n~ SUMMARY ~\n",indent =30)
+        main(args)
     
     

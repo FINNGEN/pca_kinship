@@ -145,7 +145,7 @@ task kinship{
   }
   
   Int disk_size = ceil(size(bed_file,"GB"))*4 + 20
-  Int mem = ceil(size(bed_file,"GB")) + 500
+  Int mem = ceil(size(bed_file,"GB")) + 20
 
   String? final_docker = if defined(kinship_docker) then kinship_docker else docker
   command {
