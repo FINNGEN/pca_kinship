@@ -258,7 +258,7 @@ def plot_batch_data(args):
     for i,elem in enumerate(network_batch_data):
         x,y,s = elem
         batch = batches[i]
-        ax.scatter(x,y,s/100,label = batch)
+        ax.scatter(x,y,s/1000,label = batch)
 
 
     # RANDOM GRAPH
@@ -274,8 +274,7 @@ def plot_batch_data(args):
   
     ax.set_xlabel('Average degree')
     ax.set_ylabel('Average clustering coefficient')
-    ax.legend(loc='upper left', prop={'size': 6})
-
+    ax.legend(loc='upper left', prop={'size': 5})
     
     fig.savefig(args.batch_fig)
     plt.close()

@@ -50,7 +50,7 @@ def kinship(args):
     Path(args.dup_file).touch() #there could be no duplicates
     if not os.path.isfile(args.kin_file) or mapcount(args.kin_file)  < 1 or args.force:
         args.force = True
-        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate   --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot |  tee -a {args.kinship_log_file}'
+        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate   --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot |  tee -a {args.kinship_log_file}.kinship'
         tmp_bash(cmd,True)
         # filter un/4th
         kin_filter = args.kin_file.replace('kin0','tmp')
@@ -63,13 +63,16 @@ def kinship(args):
 
 
     # R SCRIPTS
+    r_log_file = args.kinship_log_file.replace('.log','.R.log')
     if args.force:
-        scriptFile = NamedTemporaryFile(delete=True)
         for f in [f for f in get_filepaths(args.kinship_path) if f.endswith('.R')]:
             file_path,file_root,file_extension = get_path_info(f)
-            cmd = f" cat {f} | grep -v dev.off > {scriptFile.name} && Rscript {scriptFile.name} >& /dev/null  && ps2pdf {f.replace('.R','.ps')} {os.path.join(args.out_path,file_root)}.pdf && rm {f.replace('.R','.ps')} && rm {f} && rm *Rout"
+            cmd = f" cat {f} | grep -v dev.off > {f}.tmp && Rscript {f}.tmp >> {r_log_file} 2>&1  && ps2pdf {f.replace('.R','.ps')} {os.path.join(args.out_path,file_root)}.pdf && rm {f.replace('.R','.ps')}  && rm *Rout "
             logging.debug(cmd)
             tmp_bash(cmd)
+
+    cmd =f"cat {args.kinship_log_file}.kinship > {args.kinship_log_file} && cat {r_log_file} >> {args.kinship_log_file}"
+    tmp_bash(cmd)
 
 def degree_summary(args):
     """

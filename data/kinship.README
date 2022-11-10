@@ -17,7 +17,8 @@ This table contains the count of the minimum degree relation for all samples.
 [DEGREE_SUMMARY]
 
 Once we have kinship data, we can proceed to update the fam file with parent and sex data. Unfortunately, in R10 king showed some problems in handling the family structure, so we need to use a more simple approach. From the kinship file PO pairs are returned and the child/mother/father identity is inferred from the phenotype data (age and sex). We then proceed to update the fam file accordingly. This means that we cannot anymore update FIDs in the fam file.
-This is the summary of [PREFIX] kinship family and family structure
+
+This is the summary of [PREFIX] kinship family and family structure:
 
 [SUMMARY]
 
