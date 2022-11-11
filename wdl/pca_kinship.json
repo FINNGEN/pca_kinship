@@ -1,6 +1,6 @@
 {
     #WORKLOW INPUTS
-    "pca_kinship.test": True,
+    "pca_kinship.test": False,
     "pca_kinship.prefix": "finngen_R10",
     "pca_kinship.min_pheno" : "gs://fg-datateam-analysisteam-share/fromdatateam/R10/phenotype_internal_1.0/data/finngen_R10_minimum_internal_1.0.txt.gz",
     "pca_kinship.sample_data": "gs://r10-data/samples/r10_tags.tsv",
@@ -38,8 +38,8 @@
     
     #DOCKERS
     "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.test",
-    "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.fam.2",
-    "pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.fam.2",
+    "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.fam.3",
+    "pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.fam.3",
 
     
     #"pca_kinship.prune_panel.prune_docker": "String? (optional)",

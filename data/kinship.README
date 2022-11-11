@@ -33,7 +33,7 @@ This is the summary of [PREFIX] kinship family and family structure:
 | [PREFIX]_kinship.fam | Plink fam file with only pruned variants used for kinship |
 | [PREFIX]_kinship.bim | Plink bim file with only pruned variants used for kinship |
 | [PREFIX]_kinship.afreq |Plink freq file with only pruned variants used for kinship |
-| [PREFIX]_pedigree.fam | Update fam file with updated FIDs and sex |
+| [PREFIX]_pedigree.fam | Update fam file with updated parents IDs and sex |
 
 #### Kinship data
 | File |  Description  |
