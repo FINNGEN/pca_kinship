@@ -64,7 +64,8 @@ def kinship(args):
 
     # R SCRIPTS
     r_log_file = args.kinship_log_file.replace('.log','.R.log')
-    if args.force:
+    pdfs = [os.path.join(args.out_path,args.prefix + '_duplicateplot.pdf'),os.path.join(args.out_path,args.prefix + '_relplot.pdf'),os.path.join(args.out_path,args.prefix + '_uniqfam0plot.pdf')]
+    if args.force or not all([os.path.isfile(elem) for elem in pdfs]):
         for f in [f for f in get_filepaths(args.kinship_path) if f.endswith('.R')]:
             file_path,file_root,file_extension = get_path_info(f)
             cmd = f" cat {f} | grep -v dev.off > {f}.tmp && Rscript {f}.tmp >> {r_log_file} 2>&1  && ps2pdf {f.replace('.R','.ps')} {os.path.join(args.out_path,file_root)}.pdf && rm {f.replace('.R','.ps')}  && rm *Rout "

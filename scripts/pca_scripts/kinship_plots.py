@@ -3,7 +3,7 @@ from collections import Counter
 from verkko.binner import binner
 import numpy as np
 import pandas as pd
-import os
+import os,natsort
 import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
@@ -22,11 +22,16 @@ for i,key in enumerate(inf_types):inf_dict[key] = i
 
 def read_batch_data(args):
 
-    sample_batch_dict = {}
+    sample_batch_dict,tag_dict = {},{}
     with open(args.sample_info)as i:
         for line in i:
             sample,tag = line.strip().split()
-            sample_batch_dict[sample] = tag
+            tag_dict[sample] = tag
+
+    samples = np.loadtxt(args.kinship_bed.replace('bed','fam'),dtype=str,usecols =0)
+    for sample in samples:
+        sample_batch_dict[sample] = tag_dict[sample]
+    
     return sample_batch_dict
 
 
@@ -225,7 +230,7 @@ def plot_batch_data(args):
         return
     
     sample_batch_dict = read_batch_data(args)
-    batches = sorted(set(sample_batch_dict.values()))
+    batches = natsort.natsorted(set(sample_batch_dict.values()))
 
     plot_data = os.path.join(args.misc_path, args.prefix +'_batches_degree.npy')
     if not os.path.isfile(plot_data):
