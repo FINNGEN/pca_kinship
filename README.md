@@ -109,4 +109,4 @@ optional arguments:
 
 `sample-info` is a tsv file with sample ID and a tag that defines it (batch,cohort,release). It's used for plotting in order to try to identify batch/release effects in the PCA.
 
-`meta` instead contains info about the regionofbirth. It's specific to Finland and it allows us to visualize pcas on the territory, where we expect to find a very significant correlation.
+`meta` instead contains info about the region of birth. It's specific to Finland and it allows us to visualize pcas on the territory, where we expect to find a very significant correlation.
