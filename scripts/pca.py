@@ -1,52 +1,55 @@
-from utils import pretty_print,file_exists,make_sure_path_exists,get_filepaths,merge_files,mapcount,Logger
-import multiprocessing,glob,argparse,os.path,subprocess,shlex,shutil,sys
+import argparse,os,logging,multiprocessing,shutil
+from utils import pretty_print,file_exists,make_sure_path_exists,log_levels,Logger,print_msg_box,get_filepaths,mapcount
+from pca_scripts import tg,ethnic_outliers,kinship,pca,plot
 from pathlib import Path
-from pca_scripts import batches,tg,kinship,pca,plot,true_finns
-def main(args):
 
-    
-    # Get batch info
-    pretty_print("BATCHES & SAMPLES")
-    args.plink_path = os.path.join(args.out_path,'plink_files/') 
-    make_sure_path_exists(args.plink_path)
-    batches.batches(args)
+def main(args,do_plot=True):
 
-    #downloads 1k genome project and builds a plink file that can be merged
+
+    #Merge bed and 1k genome
     pretty_print('1k GENOME')
-    tg.subset_1k(args)
-    tg.merge_1k(args)
-        
-    # PCA for outliers
+    args.plink_path = os.path.join(args.out_path,'plink_files/')
+    make_sure_path_exists(args.plink_path)
+    args.merged_plink_file = tg.tg_bed(args)
+
+
+    # PCA for genetic outliers
     pretty_print('ETHNIC FINNS') 
     args.pca_outlier_path = os.path.join(args.out_path, 'outliers_pca/')
     make_sure_path_exists(args.pca_outlier_path)
-    true_finns.outlier_pca(args)
-    true_finns.finn_or_not(args)
-    true_finns.final_merge(args)
-
+    args.annot_pop,args.fg_tags = ethnic_outliers.build_superpop(args)
+    aberrant_output,args.ethnic_outliers = ethnic_outliers.detect_ethnic_outliers(args)
+    args.finngen_eur_outliers = ethnic_outliers.detect_eur_outliers(args,aberrant_output)
+    args.all_outliers = ethnic_outliers.all_outliers(args,[args.ethnic_outliers,args.finngen_eur_outliers])
+    
     #KINSHIP DATA
     pretty_print('KINSHIP')
     args.kinPath = os.path.join(args.out_path,'kinship/')
     make_sure_path_exists(args.kinPath)
     kinship.kinship(args)
 
-    #RUN PCA
+    #PCA
     pretty_print('PCA')
     args.pca_path = os.path.join(args.out_path,'pca/')
     make_sure_path_exists(args.pca_path)
-    pca.build_inliers(args)
-    pca.fast_pca_inliers(args)
-    pca.project_all(args)  
+    args.unrelated_file,args.related_file,args.rejected_file,args.final_samples = pca.build_inliers(args)
+    core_eigenvec = pca.fast_pca_inliers(args,args.unrelated_file)
+    args.eigenvec = pca.project_all(args,core_eigenvec)  
 
-    #PLOT
-    args.plot_path = os.path.join(args.out_path,'plots')
-    make_sure_path_exists(args.plot_path)
-    plot.plot_final_pca(args)
-    plot.plot_first_round_outliers(args)
-    plot.plot_fin_eur_outliers(args)
-    # plot.plot_map(args)
+    if do_plot:
+        #PLOT
+        pretty_print("PLOT")
+        args.plot_path = os.path.join(args.out_path,'plots')
+        outlier_plot_data = os.path.join(args.plot_path,'plot_data')
+        make_sure_path_exists(outlier_plot_data)
+        make_sure_path_exists(args.plot_path)
+        plot.plot_first_round_outliers(args)
+        plot.plot_fin_eur_outliers(args)
+        plot.plot_final_pca(args)
+        plot.pca_map(args)
     
     return True
+
 
 def release(args):
 
@@ -65,7 +68,7 @@ def release(args):
     shutil.copy(args.log_file,os.path.join(doc_path,os.path.basename(args.log_file)))
 
     # DATA
-    for f in [args.inlier_file,args.outlier_file,args.rejected_file,args.final_samples,args.duplicates,args.false_finns,args.eigenvec,args.pca_output_file + '.eigenval',args.pca_output_file + '_eigenvec.var']:
+    for f in [args.unrelated_file,args.related_file,args.rejected_file,args.final_samples,args.duplicates,args.all_outliers,args.eigenvec,args.pca_output_file + '.eigenval',args.pca_output_file + '_eigenvec.var']:
         shutil.copy(f,os.path.join(data_path,os.path.basename(f)))
 
     # README
@@ -79,64 +82,68 @@ def release(args):
                     line = line.replace(kw,str(word_map[kw]))
             o.write(line)
 
+
+    
 if __name__=='__main__':
     
-    parser=argparse.ArgumentParser(description="Returning final list of variants after info_score filter and ld pruning")
+    parser=argparse.ArgumentParser(description="FinnGen PCA pipeline.")
 
+    # BED FILES
     parser.add_argument("--bed", type=file_exists, help = "Folder in which the merged plink file is stored", required = True)
-    parser.add_argument('-o',"--out_path",type = str, help = "Folder in which to save the results", required = True)
-    parser.add_argument('--name',type = str,default = 'test',help = 'Name to append to output files ')
+    parser.add_argument('--tg-bed',type = file_exists,help = 'Plink 1k file')
+
+    #SAMPLE DATA
     parser.add_argument("--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
-    parser.add_argument("--meta", type=file_exists, help =  "Path to file with regionofbirth info", required = False)
+    parser.add_argument("--meta", type=file_exists, help =  "Path to file with regionofbirth info", required = True)
+
 
     #KINSHIP
     parser.add_argument('--degree',type=int,help='Degree for Kinship',default = 2)
     parser.add_argument("--kin", type=file_exists, help = "File with king related individuals")
 
-    #PCA
+    # NUMERIC PARAMS
     parser.add_argument('--pca-components',type=int,help='Components needed for pca',default = 20)
-
-    #1k
-    parser.add_argument('--tg-bed',type = file_exists,help = 'Plink 1k file')
-
-    #OUTLIER DETECTION
-    parser.add_argument('--finn-prob-filter',type = float,help = 'Filter falue to decide whether a finngen sample is part of the EUR or FIN centroid',default = 0.95)
     parser.add_argument('--pc-filter',type = int,help = 'Number of pcs on which to perform the outlier detection method',default = 3)
-    
-    #optional tags
-    parser.add_argument('--test',type = int,default =0,help = 'Flag for quick pca_outlier. For testing purposes. It only keeps 10k sample.')
-    parser.add_argument("--cpus",type = int, help = "Number of cpus to use (default available cpus)", default =  multiprocessing.cpu_count())
+    parser.add_argument('--finn-prob-filter',type = float,help = 'Filter falue to decide whether a finngen sample is part of the EUR or FIN centroid',default = 0.95)
+
+
+    # GENERAL PARAMS
+    parser.add_argument('-o',"--out_path",type = str, help = "Folder in which to save the results", required = True)
+    parser.add_argument('--name',type = str,default = 'test',help = 'Name to append to output files')
+
+    # LOGGING ET AL.
+    parser.add_argument( "-log",  "--log",  default="warning", choices = log_levels, help=(  "Provide logging level. " "Example --log debug', default='warning'"))
     parser.add_argument('--force',action = 'store_true',help = 'Replaces files by force',default = False)
+    parser.add_argument('--test',action = "store_true",help = 'Flag for quick pca_outlier method without plots.')
+    parser.add_argument("--cpus",type = int, help = "Number of cpus to use (default available cpus)", default =  multiprocessing.cpu_count())
     parser.add_argument('--release',action = 'store_true',help = 'Flag for data release',default = False)
-    parser.add_argument('-v', '--verbosity', action="count", 
-                        help="Increase output verbosity (e.g., -vv is more than -v)")
- 
-    args=parser.parse_args()
-    args.name = args.name
-    make_sure_path_exists(args.out_path)
+
+
+
+    args = parser.parse_args()    
+
+    # logging level
+    level = log_levels[args.log]
+    logging.basicConfig(level=level,format="%(levelname)s: %(message)s")
+    args.logging = logging
 
     args.parent_path = Path(os.path.realpath(__file__)).parent.parent
     args.data_path = os.path.join(args.parent_path,'data/')
     args.misc_path =  os.path.join(args.out_path, 'misc/')
-    make_sure_path_exists(args.misc_path)
+    make_sure_path_exists([args.out_path,args.misc_path,args.data_path])
+    args.sample_fam = args.bed.replace('.bed','.fam')
 
-    if args.verbosity:
-        def _v_print(*verb_args):
-            if verb_args[0] > (3 - args.verbosity):
-                print(verb_args[1])
-    else:
-        _v_print = lambda *a: None  # do-nothing function
-
-    args.v_print = _v_print
-         
     args.success = False
     success = main(args)
     
     args.log_file =os.path.join(args.out_path ,args.name + '.log' )
     if success:
+        args.logging.getLogger().setLevel(logging.WARNING)
         with  Logger(args.log_file,'wt'):
             args.force = False
-            success = main(args)        
-        
+            print_msg_box("\n~ SUMMARY ~\n",indent =30)
+            success = main(args,False)        
+            
         if args.release:
             release(args)
+

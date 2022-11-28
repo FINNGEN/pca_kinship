@@ -28,11 +28,11 @@ def kinship(args):
         deg_cmd = f"cat  {args.kin}  | grep -vw 3rd |cut -f 2,4| sed -E 1d  > {args.related_couples}"
         tmp_bash(deg_cmd)
         # cuts IID of duplicates, returns uniques and generates duplicate.fam file
-        dup_cmd = f"cat {args.kin} | grep Dup/MZ | cut -f 2,4 |grep -o -E '\\w+' | sort -u -f >""" + args.duplicates
+        dup_cmd = f"""cat {args.kin} | grep Dup/MZ | cut -f 2,4 |grep -o -E '\\w+' | sort -u -f >""" + args.duplicates
         print(dup_cmd)
         tmp_bash(dup_cmd)
     else:
-        args.v_print(3,"related info already generated")
+        args.logging.info("related info already generated")
     
     print(f'Degree {args.degree} related couples : {mapcount(args.related_couples)}')
     print(f"Total duplicates : {mapcount(args.duplicates)}")
@@ -55,8 +55,8 @@ def kinship(args):
         print('Done.')
         
         # remove false finns
-        print(f'removing non finns before starting to trim nodes {args.false_finns} {mapcount(args.false_finns)}')
-        remove_nodelist = np.loadtxt(args.false_finns,dtype = str)
+        print(f'removing non finns before starting to trim nodes {args.all_outliers} {mapcount(args.all_outliers)}')
+        remove_nodelist = np.loadtxt(args.all_outliers,dtype = str,usecols = 0)
         g.remove_nodes_from(remove_nodelist)
     
         # native nx algorithm vs greedy algorithm
@@ -79,7 +79,7 @@ def kinship(args):
 
 
     else:
-        args.v_print(1,'list of related samples already generated.')
+        args.logging.info('list of related samples already generated.')
         
     print(f'Degree {args.degree} related individuals : {mapcount(args.related_individuals)}')
     

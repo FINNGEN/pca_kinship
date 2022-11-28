@@ -1,4 +1,4 @@
-import time,sys,os,mmap,gzip,subprocess,binascii
+import time,sys,os,mmap,gzip,subprocess,binascii,logging
 import numpy as np
 from tempfile import NamedTemporaryFile
 from functools import partial
@@ -9,6 +9,25 @@ mem_bytes = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')  # e.g. 401
 mem_mib = mem_bytes/(1024.**2) 
 proc_mem = mem_mib / (cpus +1)
 
+
+superpop_dict = {'CHB': 'EAS', 'JPT': 'EAS', 'CHS': 'EAS', 'CDX': 'EAS', 'KHV': 'EAS', 'CEU': 'EUR', 'TSI': 'EUR', 'FIN': 'EUR', 'GBR': 'EUR', 'IBS': 'EUR', 'YRI': 'AFR', 'LWK': 'AFR', 'GWD': 'AFR', 'MSL': 'AFR', 'ESN': 'AFR', 'ASW': 'AFR', 'ACB': 'AFR', 'MXL': 'AMR', 'PUR': 'AMR', 'CLM': 'AMR', 'PEL': 'AMR', 'GIH': 'SAS', 'PJL': 'SAS', 'BEB': 'SAS', 'STU': 'SAS', 'ITU': 'SAS'}
+
+
+log_levels = {
+    'critical': logging.CRITICAL,
+    'error': logging.ERROR,
+    'warn': logging.WARNING,
+    'warning': logging.WARNING,
+    'info': logging.INFO,
+    'debug': logging.DEBUG
+}
+
+
+def read_int(f):
+    try:
+        return int(open(f).read())
+    except:
+        return 0
 
 def return_open_func(f):
     '''
@@ -112,7 +131,7 @@ def pretty_print(string,l = 30):
 def mapcount(filename):
 
     if not os.path.isfile(filename):
-        raise ValueError("File doesn't exist")
+        return 0
     
     try:
         return count_lines(filename)
@@ -186,6 +205,7 @@ def basic_iterator(f,separator =None,skiprows = 0,count = False,columns = 'all')
             line = return_columns(line,columns)
             row += 1   
             yield row,line
+            
 def return_columns(l,columns):
     '''
     Returns all columns, or rather the elements, provided the columns
@@ -250,13 +270,16 @@ def merge_files(o_file,file_list):
                 for line in i:
                     o.write(line)
 
-def make_sure_path_exists(path):
+def make_sure_path_exists(paths):
+    if type(paths) is not list: paths = [paths]
     import errno
-    try:
-        os.makedirs(path)
-    except OSError as exception:
-        if exception.errno != errno.EEXIST:
-            raise                
+    for path in paths:
+        try:
+            os.makedirs(path)
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise
+
 
 
 def is_gz_file(filepath):
@@ -306,7 +329,21 @@ class Logger(object):
             self.file = None
 
 
+def print_msg_box(msg, indent=1, width=None, title=None):
+    """Print message-box with optional title."""
+    lines = msg.split('\n')
+    space = " " * indent
+    if not width:
+        width = max(map(len, lines))
+    box = f'╔{"═" * (width + indent * 2)}╗\n'  # upper_border
+    if title:
+        box += f'║{space}{title:<{width}}{space}║\n'  # title
+        box += f'║{space}{"-" * len(title):<{width}}{space}║\n'  # underscore
+    box += ''.join([f'║{space}{line:<{width}}{space}║\n' for line in lines])
+    box += f'╚{"═" * (width + indent * 2)}╝'  # lower_border
+    print(box)
 
+    
 def plot_stacked_bar(data, series_labels, category_labels=None, 
                      show_values=False, value_format="{}", y_label=None, 
                      colors=None, grid=True, reverse=False):

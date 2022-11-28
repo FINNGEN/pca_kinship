@@ -62,7 +62,7 @@ workflow pca_kinship {
     freq_file = kinship.freq,
     kin_file = kinship.kin,
     # tg data
-     tg_bed = filter_tg.bed,
+    tg_bed = filter_tg.bed,
     tg_fam = filter_tg.fam,
     tg_bim = filter_tg.bim,
     sample_file = sample_data,
@@ -87,17 +87,20 @@ task pca {
     
     String prefix
     String docker
+    String? pca_docker
     Int cpu
   }
     
-    Int disk_size =   ceil(size(bed_file,"GB"))*6 + ceil(size(tg_bed,"GB")) + 10
-  Int mem = ceil(size(bed_file,"GB")) + 10
+  Int disk_size =   ceil(size(bed_file,"GB"))*6 + ceil(size(tg_bed,"GB")) + 100
+  Int mem = ceil(size(bed_file,"GB"))*2 + 10
   
-    String out_path = "/cromwell_root/"
+  String out_path = "/cromwell_root/"
   String out_file = prefix + "_output.log"
-  
+
+  String? final_docker = if defined(pca_docker) then pca_docker else docker
   command <<<
-    python3 /scripts/pca.py \
+  df -h
+    python3.7 /scripts/pca.py \
     --bed  ~{bed_file} \
     --tg-bed ~{tg_bed} \
     --kin ~{kin_file} \
@@ -110,9 +113,8 @@ task pca {
     mv ~{out_file} /cromwell_root/documentation/
     
   >>>
-  
   runtime {
-    docker: "~{docker}"
+    docker: "~{final_docker}"
     cpu: "~{cpu}"
     disks:   "local-disk ~{disk_size} HDD"
     bootDiskSizeGb: 20
@@ -137,15 +139,17 @@ task kinship{
     File pheno_file
     File metadata
     String docker
+    String? kinship_docker
     String prefix
     Int cpu 
   }
   
   Int disk_size = ceil(size(bed_file,"GB"))*4 + 20
-  Int mem = ceil(size(bed_file,"GB")) + 10
-  
+  Int mem = ceil(size(bed_file,"GB")) + 20
+
+  String? final_docker = if defined(kinship_docker) then kinship_docker else docker
   command {
-    python3  /scripts/ped.py \
+    python3.7  /scripts/ped.py \
     --bed ~{bed_file} \
     --out-path . \
     --prefix ~{prefix} \
@@ -158,7 +162,7 @@ task kinship{
   }
   
   runtime {
-    docker: "~{docker}"
+    docker: "~{final_docker}"
     cpu: "~{cpu}"
     zones: "europe-west1-b europe-west1-c europe-west1-d"
     disks: "local-disk ~{disk_size} HDD"
@@ -194,6 +198,7 @@ task merge_plink {
     String pargs
     
     String docker
+    String? merge_docker
     Int mem
     Int cpu
     Boolean test
@@ -201,7 +206,8 @@ task merge_plink {
   
   Int disk_size = ceil(size(bed_files,"GB"))*4+20
   Int plink_mem = mem*1000 - 2000
-  
+
+  String? final_docker = if defined(merge_docker) then merge_docker else docker
   command <<<
     cat ~{write_lines(bed_files)} | sed -e 's/.bed//g' > merge_list.txt
     cat ~{fam_files[0]} | shuf | head -n 50000  > test_fam.txt 
@@ -209,7 +215,7 @@ task merge_plink {
   >>>
   
   runtime {
-    docker: "~{docker}"
+    docker: "~{final_docker}"
     cpu: "~{cpu}"
     disks: "local-disk ~{disk_size} HDD"
     bootDiskSizeGb: 20
@@ -237,18 +243,20 @@ task chrom_convert {
     Int mem
     Int cpu   
     String docker
+    String? convert_docker
   }
  
   File cFile = sub(chromPath,"CHROM",chrom)
   File tabix = cFile + '.tbi'
   Int disk_size = ceil(size(cFile,"GB")) *4  + 20
   Int plink_mem = mem*1000 - 2000
-  
+
+  String? final_docker = if defined(convert_docker) then convert_docker else docker
   command <<<
     cat ~{variants} | grep chr~{chrom}_ |  awk -F "_" '{print $1"\t"$2"\t"$2}' > tmp && split -n l/~{cpu} -d tmp regions
     ls regions* | parallel -j ~{cpu} "bcftools view ~{cFile} -R {} -Oz -o chunk{}.vcf.gz && echo {}"
     bcftools concat -n -f <(ls chunk*vcf.gz) -Oz -o tmp.vcf.gz && rm chunk*
-    
+        
     plink2 --vcf tmp.vcf.gz \
     ~{pargs} \
     --memory ~{plink_mem}  \
@@ -259,7 +267,7 @@ task chrom_convert {
   >>>
 
   runtime {
-    docker: "~{docker}"
+    docker: "~{final_docker}"
     cpu: "~{cpu}"
     disks: "local-disk ~{disk_size}  HDD"
     bootDiskSizeGb: 20
@@ -280,6 +288,8 @@ task prune_panel {
 
   input {
     String docker
+    String? prune_docker
+    
     String prefix
   
     File info_score
@@ -291,6 +301,7 @@ task prune_panel {
     String pargs
     String ld_params
     String target
+    
   }
 
   File bed_file = plink_path + ".bed"
@@ -299,7 +310,8 @@ task prune_panel {
   File freq_file = plink_path + ".afreq"
   
   Int disk_size = ceil(size(bed_file,'GB'))*2
-  
+  String? final_docker = if defined(prune_docker) then prune_docker else docker
+
   command {
     python3 /scripts/prune.py \
     --bed ~{bed_file} \
@@ -313,7 +325,7 @@ task prune_panel {
   }
   
   runtime {
-    docker: "~{docker}"
+    docker: "~{final_docker}"
     cpu: "~{cpu}"
     disks: "local-disk ~{disk_size} HDD"
     bootDiskSizeGb: 20
@@ -338,6 +350,7 @@ task filter_tg {
     String tg_root
     File snplist
     String docker
+    String? tg_docker
     String prefix
     Int cpu
     Int mem
@@ -350,7 +363,8 @@ task filter_tg {
   
   Int disk_size =  ceil(size(tg_bed,'GB'))*4 + 10
   String out_root = prefix + "_1kg"
-  
+
+  String? final_docker = if defined(tg_docker) then tg_docker else docker
   command {
     plink2 --bfile ~{sub(tg_bed,'.bed','')} \
     --extract ~{snplist}  \
@@ -359,7 +373,7 @@ task filter_tg {
   }
   
   runtime {
-    docker: "~{docker}"
+    docker: "~{final_docker}"
     cpu: "~{cpu}"
     disks: "local-disk ~{disk_size} HDD"
     bootDiskSizeGb: 20
