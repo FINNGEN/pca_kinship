@@ -263,6 +263,9 @@ def valid_string(s):
         sys.exit(1)
         
 
+def basename(f):
+    return os.path.splitext(f)[0]
+        
 def merge_files(o_file,file_list):
     with open(o_file,'wt') as o:
         for f in file_list:

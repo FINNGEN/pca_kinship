@@ -126,8 +126,9 @@ task pca {
   output {
     File readme = "~{out_path}/${prefix}_pca_readme"
     #DATA
-    Array[File] data =    glob("/cromwell_root/data/${prefix}*") #DOCUMENTATION
-    Array[File] doc =    glob("/cromwell_root/documentation/${prefix}*") 
+    Array[File] data =    glob("/cromwell_root/data/${prefix}*")
+    #DOCUMENTATION
+    Array[File] doc =    glob("/cromwell_root/documentation/${prefix}*")
   }
 }
 
