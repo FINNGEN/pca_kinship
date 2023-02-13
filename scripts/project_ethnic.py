@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 from utils import file_exists,make_sure_path_exists,pretty_print,basename
-from pca_scripts.plot import plot_2d
+from pca_scripts.plot import plot_2d_density,plot_2d
 
 
 def read_in_tags(fam_file,tags):
@@ -41,19 +41,25 @@ def project(eigenvec,pca_path,ref_bed,test_bed):
     '''
     Project all samples onto same space
     '''
-    proj_cmd = f"plink2 --score {eigenvec}  2 3 header-read no-mean-imputation  --score-col-nums 5-14  "
+    proj_cmd = f"plink2 --score {eigenvec}  2 3 header-read no-mean-imputation variance-standardize  --score-col-nums 5-14  "
+
+    #FREQ FILES
+    for bed_file in [ref_bed,test_bed]:
+        bed_root=basename(bed_file)
+        if not  os.path.isfile(bed_root + '.afreq'):
+            subprocess.call(shlex.split(f"plink2 --bfile {bed_root} --freq --out {bed_root}"))
     #REF BED
     ref_score = os.path.join(pca_path, 'ref_proj.sscore')
     if not os.path.isfile(ref_score):
-    
-        ref_cmd = proj_cmd + f" --bfile {basename(ref_bed)} --out {basename(ref_score)}"
+        freq_cmd = f"plink2 --bfile {basename(ref_bed)}"    
+        ref_cmd = proj_cmd + f" --bfile {basename(ref_bed)} --out {basename(ref_score)} --read-freq {basename(ref_bed)}.afreq"
         subprocess.call(shlex.split(ref_cmd))
     else :
         print(f"{ref_score} already projected.")
               
     test_score = os.path.join(pca_path, "test_proj.sscore")
     if not os.path.isfile(test_score):
-        test_cmd = proj_cmd + f" --bfile {basename(test_bed)} --out {basename(test_score)}"
+        test_cmd = proj_cmd + f" --bfile {basename(test_bed)} --out {basename(test_score)} --read-freq {basename(test_bed)}.afreq"
         subprocess.call(shlex.split(test_cmd))
     else :
         print(f"{test_score} already projected.")
@@ -85,13 +91,20 @@ def plot_projection(ref_scores,test_scores,plot_path):
         print('reading in data')
         df = pd.read_csv(plot_data,index_col=0)
     print(df)
-    fig_path = os.path.join(plot_path,'projection.pdf')
+    
     color_map = {"proj":'red','core':'blue'}
     tags = list(set(df.TAG))
     print(tags)
-    alpha_map = {"core":.1,'proj':.3}
-    plot_2d(df,fig_path,tags=set(df.TAG),color_map=color_map,max_size = 10000,alpha_map=alpha_map)
     
+    fig_path = os.path.join(plot_path,'projection.pdf')
+    print(fig_path)
+    if not os.path.isfile(fig_path):
+        alpha_map = {"core":.1,'proj':.3}
+        plot_2d(df,fig_path,tags=set(df.TAG),color_map=color_map,max_size = 10000,alpha_map=alpha_map)
+    fig_path = os.path.join(plot_path,'projection_density.pdf')
+    print(fig_path)
+    if not os.path.isfile(fig_path):
+        plot_2d_density(df,fig_path,tags=set(df.TAG),data_path=plot_path,color_map=color_map,max_size=np.inf)
 
 def main(args):
     pretty_print("TAG DICT")
