@@ -92,7 +92,7 @@ task pca {
   }
     
   Int disk_size =   ceil(size(bed_file,"GB"))*6 + ceil(size(tg_bed,"GB")) + 100
-  Int mem = ceil(size(bed_file,"GB"))*2 + 10
+  Int mem = ceil(size(bed_file,"GB"))*3 + 10
   
   String out_path = "/cromwell_root/"
   String out_file = prefix + "_output.log"
