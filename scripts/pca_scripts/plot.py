@@ -470,6 +470,7 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
         lh._sizes = [50]
         
     fig.savefig(out_file)
+    fig.savefig(out_file.replace('.pdf','.png'),dpi=300)
     plt.close()
 
 
@@ -554,6 +555,7 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     plt.setp(ax2.get_xticklabels(), visible=False)
     plt.setp(ax1.get_xticklabels(), visible=False)
     fig.savefig(out_file)
+    fig.savefig(out_file.replace('.pdf','.png'),dpi=300)
     plt.close()
 
 
@@ -569,7 +571,7 @@ def trim_axis(ax):
 
 
 
-def plot_2d_density(pc_data,out_file,tags,data_path,pc_columns = ['PC1','PC2','PC3'],color_map=None,tag_column="TAG",max_size = 3000,max_map=None,pc_tags=None,axis_legend =2,legend_location = "lower left",legend_fontsize=6):
+def plot_2d_density(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],color_map=None,tag_column="TAG",max_size = 3000,max_map=None,pc_tags=None,axis_legend =2,legend_location = "lower left",legend_fontsize=6,linewidths=None,levels = 3):
 
 
     fig = plt.figure()
@@ -581,7 +583,10 @@ def plot_2d_density(pc_data,out_file,tags,data_path,pc_columns = ['PC1','PC2','P
     axes=[ax1,ax2,ax3]
 
     if not pc_tags: pc_tags = pc_columns
-    
+    line_dict = dd(lambda:.6)
+    if linewidths:
+        for tag in linewidths :line_dict[tag] = linewidths[tag]
+
     if not color_map:
         color_maps = list(color_dict[len(tags)]['qualitative'].keys())
         cm = 'Set1' if 'Set1' in color_maps else color_maps[0]
@@ -616,7 +621,8 @@ def plot_2d_density(pc_data,out_file,tags,data_path,pc_columns = ['PC1','PC2','P
             xx, yy = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
 
             # DUMP DATA
-            save_dump = os.path.join(data_path,f"contour_{tag}_{i}.txt")
+            data_path =os.path.splitext(out_file)[0]
+            save_dump = data_path +f"_contour_{tag}_{i}.txt"
             if not os.path.isfile(save_dump):
                 print(f"generating data --> {save_dump}")
                 positions = np.vstack([xx.ravel(), yy.ravel()])
@@ -628,7 +634,7 @@ def plot_2d_density(pc_data,out_file,tags,data_path,pc_columns = ['PC1','PC2','P
                 print(f"loading {save_dump}")
                 f = np.loadtxt(save_dump)
             # NEED TO DUMP DATA AND ADD LABEL
-            ax.contour(xx, yy, f,colors=color)
+            ax.contour(xx, yy, f,colors=[color],linewidths=line_dict[tag],levels =levels,linestyles = 'dashed' )
 
 
 
@@ -652,5 +658,6 @@ def plot_2d_density(pc_data,out_file,tags,data_path,pc_columns = ['PC1','PC2','P
     plt.setp(ax2.get_xticklabels(), visible=False)
     plt.setp(ax1.get_xticklabels(), visible=False)
     fig.savefig(out_file)
+    fig.savefig(out_file.replace('.pdf','.png'),dpi=300)
     plt.close()
     

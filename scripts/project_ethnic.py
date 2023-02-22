@@ -1,10 +1,20 @@
-import argparse, os,subprocess,shlex
+import argparse, os,subprocess,shlex,pickle
 import pandas as pd
 import numpy as np
+from collections import Counter
 from collections import defaultdict
-from utils import file_exists,make_sure_path_exists,pretty_print,basename
-from pca_scripts.plot import plot_2d_density,plot_2d
+from scipy.stats import chi2
+from scipy.spatial.distance import cdist
+from utils import file_exists,make_sure_path_exists,pretty_print,basename,mapcount,progressBar
+from pca_scripts.plot import plot_2d_density,plot_2d,trim_axis
+from pca_scripts.color_dict import color_dict
+from verkko.binner import binner
 
+import matplotlib as mpl
+mpl.use('Agg')
+from matplotlib import pyplot as plt
+import seaborn as sns
+sns.set(palette='Set2')
 
 def read_in_tags(fam_file,tags):
 
@@ -25,31 +35,69 @@ def read_in_tags(fam_file,tags):
     return fam_tag_dict
 
 
-def run_pca(bed,pca_path):
 
-    pca_root = os.path.join(pca_path,'ref_pca')
-    eigenvec = pca_root + '.eigenvec.var'
+def merge_pca(pca_root,ref_bed,proj_bed,extract=None):
+
+    merged_plink = pca_root + '.bed'
+    if not os.path.isfile(merged_plink):
+        print ('Merged dataset missing')
+        cmd = f"plink --bfile {basename(ref_bed)} --bmerge {basename(proj_bed)} --make-bed --out {pca_root}"
+        subprocess.call(shlex.split(cmd))
+    else :
+        print(f"{merged_plink} bed file already generated")
+        
+    # PCA
+    eigenvec = pca_root + '.eigenvec'
     if not os.path.isfile(eigenvec):
-        cmd = f"plink2 --bfile {basename(bed)} --pca 10 approx biallelic-var-wts -out {pca_root}"
+        approx = "approx" if mapcount(basename(merged_plink) +'.fam') > 5000 else ""
+        extract = f" --extract {extract} " if extract else "" 
+        cmd = f"plink2 --bfile {basename(merged_plink)} {extract} --pca 10 {approx} biallelic-var-wts -out {pca_root}"
+        print(cmd)
         subprocess.call(shlex.split(cmd))
     else:
         print('PCA already calculated')
-    return eigenvec
 
+    # SPLIT AND CHANGE HEADER TO MATCH PROJ DATA
 
-def project(eigenvec,pca_path,ref_bed,test_bed):
-    '''
-    Project all samples onto same space
-    '''
-    proj_cmd = f"plink2 --score {eigenvec}  2 3 header-read no-mean-imputation variance-standardize  --score-col-nums 5-14  "
+    ref_score = pca_root +  '_ref.sscore'
+    proj_score =pca_root +  "_proj.sscore"
+    if not all([os.path.isfile(elem) for elem in [ref_score,proj_score]]):
+        proj_iids = np.loadtxt(basename(proj_bed) + '.fam',dtype = str,usecols = 1)
+        ref_iids = np.loadtxt(basename(ref_bed) + '.fam',dtype = str,usecols = 1)
 
+        with open(ref_score,'wt') as ref,open(proj_score,'wt') as proj,open(eigenvec) as i:
+            new_header = '\t'.join([elem +"_AVG"  if elem.startswith("PC") else elem for elem in next(i).strip().split()]) + '\n'
+            proj.write(new_header)
+            ref.write(new_header)
+            for line in i:
+                iid = line.strip().split()[1]
+                if iid in ref_iids:ref.write(line)
+                elif iid in proj_iids:proj.write(line)
+                else:"iid missing, we have a problem!"
+    else:
+        print(f"ref/proj already split")
+                
+    return ref_score,proj_score
+
+def run_pca(pca_root,ref_bed,proj_bed):
+
+    eigenvec = pca_root + '.eigenvec.var'
+    print(eigenvec)
+    if not os.path.isfile(eigenvec):
+        approx = "--approx" if mapcount(ref_bed.replace('.bed','.fam')) > 5000 else ""
+        cmd = f"plink2 --bfile {basename(ref_bed)} --pca 10 {approx} biallelic-var-wts -out {pca_root}"
+        subprocess.call(shlex.split(cmd))
+    else:
+        print('PCA already calculated')
+  
+    proj_cmd = f"plink2 --score {eigenvec}  2 3 header-read  no-mean-imputation   --score-col-nums 5-14  "
     #FREQ FILES
-    for bed_file in [ref_bed,test_bed]:
+    for bed_file in [ref_bed,proj_bed]:
         bed_root=basename(bed_file)
         if not  os.path.isfile(bed_root + '.afreq'):
             subprocess.call(shlex.split(f"plink2 --bfile {bed_root} --freq --out {bed_root}"))
     #REF BED
-    ref_score = os.path.join(pca_path, 'ref_proj.sscore')
+    ref_score = pca_root +  '_ref.sscore'
     if not os.path.isfile(ref_score):
         freq_cmd = f"plink2 --bfile {basename(ref_bed)}"    
         ref_cmd = proj_cmd + f" --bfile {basename(ref_bed)} --out {basename(ref_score)} --read-freq {basename(ref_bed)}.afreq"
@@ -57,54 +105,191 @@ def project(eigenvec,pca_path,ref_bed,test_bed):
     else :
         print(f"{ref_score} already projected.")
               
-    test_score = os.path.join(pca_path, "test_proj.sscore")
-    if not os.path.isfile(test_score):
-        test_cmd = proj_cmd + f" --bfile {basename(test_bed)} --out {basename(test_score)} --read-freq {basename(test_bed)}.afreq"
+    proj_score =pca_root +  "_proj.sscore"
+    if not os.path.isfile(proj_score):
+        test_cmd = proj_cmd + f" --bfile {basename(proj_bed)} --out {basename(proj_score)} --read-freq {basename(proj_bed)}.afreq"
         subprocess.call(shlex.split(test_cmd))
     else :
-        print(f"{test_score} already projected.")
+        print(f"{proj_score} already projected.")
 
-    # MERGE SCORES
-    all_scores = os.path.join(pca_path,'all.sscore')
-    with open(all_scores,'wt') as o, open(ref_score) as ref,open(test_score) as test:
-        for line in ref:o.write(line)
-        next(test)
-        for line in test:o.write(line)
-        
-    return all_scores,ref_score,test_score
+    return ref_score,proj_score
 
 
-
-def plot_projection(ref_scores,test_scores,plot_path):
+def plot_projection(ref_scores,proj_scores,plot_root,tag_dict):
 
     # read in data
-    plot_data = os.path.join(plot_path,'proj.csv')
+    plot_data = plot_root + '_proj.csv'
     if not os.path.isfile(plot_data):
         pc_avg = ["PC1_AVG",'PC2_AVG','PC3_AVG']
         ref_df =  pd.read_csv(ref_scores,index_col = 0,sep = '\t',usecols = ['IID'] + pc_avg, dtype = {pc: np.float64 for pc in pc_avg}).rename(columns = {pc: pc.replace("_AVG","") for pc in pc_avg})
         ref_df['TAG'] = "core"
-        test_df =  pd.read_csv(test_scores,sep = '\t',index_col = 0,usecols = ['IID'] + pc_avg, dtype = {pc: np.float64 for pc in pc_avg}).rename(columns = {pc: pc.replace("_AVG","") for pc in pc_avg})
+        test_df =  pd.read_csv(proj_scores,sep = '\t',index_col = 0,usecols = ['IID'] + pc_avg, dtype = {pc: np.float64 for pc in pc_avg}).rename(columns = {pc: pc.replace("_AVG","") for pc in pc_avg})
         test_df['TAG'] = "proj"
         df = pd.concat([ref_df,test_df])
         df.to_csv(plot_data)
-    else:
-        print('reading in data')
-        df = pd.read_csv(plot_data,index_col=0)
-    print(df)
-    
-    color_map = {"proj":'red','core':'blue'}
+
+    df = pd.read_csv(plot_data,index_col=0)
     tags = list(set(df.TAG))
+    scatter_fig = plot_root + '_projection.pdf'
+    density_fig = plot_root + '_projection_density.pdf'
+    if not os.path.isfile(scatter_fig) or not os.path.isfile(density_fig):
+        print('reading in data')
+        color_map = {"proj":(1,0,0),'core':(0,0,1)}
+        plot_2d(df,scatter_fig,tags=tags,color_map=color_map,max_size = 10000,alpha_map={"core":.1,'proj':.3})
+        plot_2d_density(df,density_fig,tags=tags,color_map=color_map,max_size=20000)
+
+
+    tag_df = pd.DataFrame(tag_dict.items(),columns=["IID","TAG"]).set_index("IID")
+    df = pd.read_csv(plot_data,index_col=0)
+    df.update(tag_df)
+    tags = list(set(df.TAG))
+
+    tag_scatter = plot_root + '_tags_projection.pdf'
+    tag_density = plot_root + '_tags_projection-density.pdf'
+    if not all([os.path.isfile(elem) for elem in [tag_scatter,tag_density]]):
+        plot_2d(df,tag_scatter,tags=tags,max_size = 10000)
+        lw= {elem:.3 for elem in tags}
+        lw["proj"] = 1
+        print(lw)
+        #tags.remove("Other")
+        plot_2d_density(df,tag_density,tags=tags,max_size=np.inf,linewidths=lw,levels = 2)
+    else:
+        print(f"{tag_scatter} already generated")
+        print(f"{tag_density} already generated")
+    pc_density_tags(df,plot_root)
+
+
+def return_bin_data(data):
+    xmin,xmax = data.to_numpy().min(),data.to_numpy().max()
+    bins = binner.Bins(float,xmin,xmax,'lin',40)
+    countNotNormalized = bins.bin_count_divide(data)
+    count = np.array(binner.normalize(list(countNotNormalized)))
+    binAvg = bins.bin_average(zip(data,data))
+    binMask = ~np.ma.getmask(binAvg)
+    plot_data = count[binMask]
+    bin_data = binAvg[binMask]
+
+    return bin_data,plot_data
+
+
+def pc_density_tags(df,plot_root):
+
+    save_fig = plot_root + '_tags_pc_density.pdf'
+    if os.path.isfile(save_fig):
+        print(f"{save_fig} already generated")
+        return
+
+    tags = list(set(df.TAG))
+    tags.insert(0, tags.pop(tags.index("proj")))
+
+    print(len(tags))
+    scheme = "Set1" if len(tags) <10 else "Set3"
+    colors = color_dict[len(tags)]['qualitative'][scheme]
+    fig = plt.figure()
+    gs = mpl.gridspec.GridSpec(3,1)
+    pc_tags =["PC1",'PC2','PC3']
+    tmp_path = os.path.join(os.path.split(plot_root)[0],'tmp')
+    make_sure_path_exists(tmp_path)
+    for i,pc in enumerate(pc_tags):
+        print(pc)
+        ax = fig.add_subplot(gs[i,0])
+        ax.set_ylabel(r'P('+pc+')')
+        pc_data = df[pc]              
+            
+        for j,tag in enumerate(tags):
+            print(tag)
+            bin_file = os.path.join(tmp_path,f"{pc}_{tag}_bin.npy")
+            plot_file = os.path.join(tmp_path,f"{pc}_{tag}_plot.npy")
+            if not os.path.isfile(bin_file):
+                tag_data = pc_data[df.TAG==tag]
+                bin_data,plot_data = return_bin_data(tag_data)
+                bin_data.dump(bin_file)
+                plot_data.dump(plot_file)
+            else:
+                bin_data = np.load(bin_file,allow_pickle = True)
+                plot_data = np.load(plot_file,allow_pickle = True)
+
+
+            lw = 1 if tag =='proj' else .7
+            ls = '-' if tag =='proj' else '--'
+            ax.plot(bin_data,plot_data,ls,color = colors[j],label=tag,linewidth=lw)
+            
+        trim_axis(ax)
+        for tick in ax.xaxis.get_major_ticks():
+            tick.label.set_fontsize(6)
+        for tick in ax.yaxis.get_major_ticks():
+            tick.label.set_fontsize(6)
+
+    leg_ax = ax
+    leg = leg_ax.legend(loc="lower left", numpoints=1, fancybox = True,prop={'size':4})
+
+    fig.savefig(save_fig)
+    fig.savefig(save_fig.replace('.pdf','.png'))
+    plt.close()
+
+    return
+                
+def generate_tag_data(tag_dict,ref_scores,pca_root):
+    """
+    Here i generate the probs for all tags.
+    """
+    tags = set(tag_dict.values())
     print(tags)
+
+    maha_data = pca_root + '_avg_cov.pkl'
+    if not os.path.isfile(maha_data):
+        summary = {}
+        pc_data = pd.read_csv(ref_scores,usecols=['IID','PC1_AVG','PC2_AVG','PC3_AVG'],index_col = 0,sep='\t')
+        for tag in tags:
+            print(tag)
+            samples = [elem for elem in tag_dict if tag_dict[elem] == tag]
+            tag_data = pc_data.loc[samples].to_numpy()
+            print(tag_data.shape)
+            tag_avg = np.reshape(np.average(tag_data,axis=0),(1,tag_data.shape[1]))
+            tag_cov = np.linalg.inv(np.cov(tag_data.T))
+            print(tag_avg,tag_cov)
+            summary[tag]=[tag_avg,tag_cov]
+        with open(maha_data,'wb') as o:pickle.dump(summary,o)
+    else:
+        print(f"Uploading tag mahalanobis data {maha_data}")
+        
+    with open(maha_data,'rb') as i:tag_avg_cov=pickle.load(i)
+
+    return tag_avg_cov
+
+
+def calculate_probs(proj_scores,ref_scores,tag_dict,out_root):
+    proj_data = pd.read_csv(proj_scores,usecols=['IID','PC1_AVG','PC2_AVG','PC3_AVG'],index_col = 0,sep='\t')
+    samples = proj_data.index.values
+    df_prob = pd.DataFrame(index=proj_data.index)
+    proj_data = proj_data.to_numpy()
+        
+    out_probs = out_root + "_tag_probs.txt"
+    if not os.path.isfile(out_probs):
+        tag_avg_cov = generate_tag_data(tag_dict,ref_scores,out_root)
+        print(f"Saving probs to {out_probs}")
+        for tag in tag_avg_cov:
+            avg,cov = tag_avg_cov[tag]
+            tag_dist = cdist(proj_data,avg,metric = 'mahalanobis',VI = cov).flatten()**2
+            tag_prob = 1 - chi2.cdf(tag_dist,3)
+            df_prob[tag] = tag_prob
     
-    fig_path = os.path.join(plot_path,'projection.pdf')
-    print(fig_path)
-    if not os.path.isfile(fig_path):
-        alpha_map = {"core":.1,'proj':.3}
-        plot_2d(df,fig_path,tags=set(df.TAG),color_map=color_map,max_size = 10000,alpha_map=alpha_map)
-    fig_path = os.path.join(plot_path,'projection_density.pdf')
-    print(fig_path)
-    if not os.path.isfile(fig_path):
-        plot_2d_density(df,fig_path,tags=set(df.TAG),data_path=plot_path,color_map=color_map,max_size=np.inf)
+        df_prob = df_prob.div(df_prob.sum(axis=1),axis=0)
+        df_prob.to_csv(out_probs)
+
+    df_prob = pd.read_csv(out_probs,index_col=0)
+    if "NA" in df_prob: df_prob = df_prob.drop(["NA"],axis=1)
+    print(df_prob)
+
+
+    hit_regions = df_prob.idxmax(axis=1)
+    for elem in Counter(hit_regions).most_common(): print(elem)   
+    with open(out_root + "_samples_most_likely_region.txt",'wt') as o:
+        for entry in zip(samples,hit_regions):
+            o.write('\t'.join(map(str,entry)) + '\n')
+    return
+
+
 
 def main(args):
     pretty_print("TAG DICT")
@@ -113,15 +298,24 @@ def main(args):
     pretty_print("PCA")
     pca_path = os.path.join(args.out_path,'pca')
     make_sure_path_exists(pca_path)
-    eigenvec= run_pca(args.ref_bed,pca_path)
+    if args.merge:args.name += "_merged"
+    pca_root = os.path.join(pca_path,args.name)
+    if args.merge:
+        pretty_print("MERGE-PCA")
+        ref_scores,proj_scores =  merge_pca(pca_root,args.ref_bed,args.proj_bed,args.extract)
+    else:
+        ref_scores,proj_scores = run_pca(pca_root,args.ref_bed,args.proj_bed)
 
-    pretty_print("PROJ")
-    all_scores,ref_scores,test_scores = project(eigenvec,pca_path,args.ref_bed,args.test_bed)
-
-    pretty_print("PLOT PROJECTION")
     plot_path = os.path.join(args.out_path,'plot')
-    make_sure_path_exists(plot_path)
-    plot_projection(ref_scores,test_scores,plot_path)
+    plot_root = os.path.join(plot_path,args.name)
+
+    if args.plot:
+        pretty_print("PLOT PROJECTION")
+        make_sure_path_exists(plot_path)
+        df = plot_projection(ref_scores,proj_scores,plot_root,tag_dict)
+
+    pretty_print("TAG PROJECTIONS")
+    calculate_probs(proj_scores,ref_scores,tag_dict,os.path.join(args.out_path,args.name))
     return
 
 
@@ -132,12 +326,15 @@ if __name__=='__main__':
 
     # BED FILES
     parser.add_argument("--ref-bed", type=file_exists, help = "Bed file for reference PC", required = True)
-    parser.add_argument('--test-bed',type = file_exists,help = 'Bed file for samples that need to be projected.')
+    parser.add_argument('--proj-bed',type = file_exists,help = 'Bed file for samples that need to be projected.')
 
     # GENERAL PARAMS
+    parser.add_argument("--name", type=str,help ="prefix of output files")
     parser.add_argument('-o',"--out_path",type = str, help = "Folder in which to save the results", required = True)
     parser.add_argument("--sample-info", type=file_exists, help =  "Tsv file with sample data, used for grouping.", required = True)
-
+    parser.add_argument('--plot',action = 'store_true',help = 'Plotting',default = False)
+    parser.add_argument('--merge',action = 'store_true',help = "No projection but only PCA in merged dataset.",default = False)
+    parser.add_argument("--extract", type=file_exists, help =  "Snps to use.", required = False)
 
     args = parser.parse_args()
     make_sure_path_exists(args.out_path)
