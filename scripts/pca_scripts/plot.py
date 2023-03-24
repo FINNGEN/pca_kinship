@@ -621,19 +621,17 @@ def plot_2d_density(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],color
             xx, yy = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
 
             # DUMP DATA
-            data_path =os.path.splitext(out_file)[0]
-            save_dump = data_path +f"_contour_{tag}_{i}.txt"
-            if not os.path.isfile(save_dump):
-                print(f"generating data --> {save_dump}")
-                positions = np.vstack([xx.ravel(), yy.ravel()])
-                values = np.vstack([x, y])
-                kernel = st.gaussian_kde(values)
-                f = np.reshape(kernel(positions).T, xx.shape)
-                np.savetxt(save_dump,f)
-            else :
-                print(f"loading {save_dump}")
-                f = np.loadtxt(save_dump)
-            # NEED TO DUMP DATA AND ADD LABEL
+            positions = np.vstack([xx.ravel(), yy.ravel()])
+            values = np.vstack([x, y])
+            kernel = st.gaussian_kde(values)
+            f = np.reshape(kernel(positions).T, xx.shape)
+            
+            #data_path =os.path.splitext(out_file)[0]
+            ##print(f"generating data --> {save_dump}")
+            #np.savetxt(save_dump,f)
+            #print(f"loading {save_dump}")
+            #f = np.loadtxt(save_dump)
+
             ax.contour(xx, yy, f,colors=[color],linewidths=line_dict[tag],levels =levels,linestyles = 'dashed' )
 
 

@@ -36,10 +36,12 @@ def read_in_tags(fam_file,tags):
 
 
 
-def merge_pca(pca_root,ref_bed,proj_bed,extract=None):
+def merge_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract=None,force=False):
 
     # i defined the merged file only using input files names, so i don't regenerate them everytime.
-    merged_plink = os.path.join(os.path.dirname(pca_root),pathlib.Path(ref_bed).stem + "_" + pathlib.Path(proj_bed).stem + "_merged.bed")
+    plink_root = os.path.join(os.path.dirname(os.path.dirname(pca_root)),'plink')
+    make_sure_path_exists(plink_root)
+    merged_plink = os.path.join(plink_root,pathlib.Path(ref_bed).stem + "_" + pathlib.Path(proj_bed).stem + "_merged.bed")
     if not os.path.isfile(merged_plink):
         print ('Merged dataset missing')
         cmd = f"plink --bfile {basename(ref_bed)} --bmerge {basename(proj_bed)} --make-bed --out {basename(merged_plink)}"
@@ -54,45 +56,41 @@ def merge_pca(pca_root,ref_bed,proj_bed,extract=None):
         subprocess.call(shlex.split(cmd))
     # PCA
     eigenvec = pca_root + '.eigenvec'
-    if not os.path.isfile(eigenvec):
+    if not os.path.isfile(eigenvec) or force:
         approx = "approx" if mapcount(basename(merged_plink) +'.fam') > 5000 else ""
         extract = f" --extract {extract} " if extract else "" 
-        cmd = f"plink2 --bfile {basename(merged_plink)} {extract} --geno 0.01  --pca 10 {approx} biallelic-var-wts -out {pca_root} --read-freq {freq}"
+        cmd = f"{plink_cmd} --bfile {basename(merged_plink)} {extract} --write-snplist   --pca 3 {approx} biallelic-var-wts -out {pca_root} --read-freq {freq}"
         print(cmd)
         subprocess.call(shlex.split(cmd))
     else:
         print('PCA already calculated')
 
     # SPLIT AND CHANGE HEADER TO MATCH PROJ DATA
-
     ref_score = pca_root +  '_ref.sscore'
     proj_score =pca_root +  "_proj.sscore"
-    if not all([os.path.isfile(elem) for elem in [ref_score,proj_score]]):
-        proj_iids = np.loadtxt(basename(proj_bed) + '.fam',dtype = str,usecols = 1)
-        ref_iids = np.loadtxt(basename(ref_bed) + '.fam',dtype = str,usecols = 1)
+    proj_iids = set(np.loadtxt(basename(proj_bed) + '.fam',dtype = str,usecols = 1))
+    ref_iids = set(np.loadtxt(basename(ref_bed) + '.fam',dtype = str,usecols = 1))
 
-        with open(ref_score,'wt') as ref,open(proj_score,'wt') as proj,open(eigenvec) as i:
-            new_header = '\t'.join([elem +"_AVG"  if elem.startswith("PC") else elem for elem in next(i).strip().split()]) + '\n'
-            proj.write(new_header)
-            ref.write(new_header)
-            for line in i:
-                iid = line.strip().split()[1]
-                if iid in ref_iids:ref.write(line)
-                elif iid in proj_iids:proj.write(line)
-                else:"iid missing, we have a problem!"
-    else:
-        print(f"ref/proj already split")
+    with open(ref_score,'wt') as ref,open(proj_score,'wt') as proj,open(eigenvec) as i:
+        new_header = '\t'.join([elem +"_AVG"  if elem.startswith("PC") else elem for elem in next(i).strip().split()]) + '\n'
+        proj.write(new_header)
+        ref.write(new_header)
+        for line in i:
+            iid = line.strip().split()[1]
+            if iid in ref_iids:ref.write(line)
+            elif iid in proj_iids:proj.write(line)
+            else:"iid missing, we have a problem!"
                 
     return ref_score,proj_score
 
-def run_pca(pca_root,ref_bed,proj_bed,extract = None):
+def run_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract = None):
 
     eigenvec = pca_root + '.eigenvec.var'
     print(eigenvec)
     if not os.path.isfile(eigenvec):
         approx = "--approx" if mapcount(ref_bed.replace('.bed','.fam')) > 5000 else ""
         extract = f" --extract {extract} " if extract else "" 
-        cmd = f"plink2 --bfile {basename(ref_bed)} {extract} --geno 0.01 --pca 10 {approx} biallelic-var-wts -out {pca_root}"
+        cmd = f"{plink_cmd} --bfile {basename(ref_bed)} {extract}  --pca 3 {approx} biallelic-var-wts -out {pca_root}"
         subprocess.call(shlex.split(cmd))
     else:
         print('PCA already calculated')
@@ -139,12 +137,11 @@ def plot_projection(ref_scores,proj_scores,plot_root,tag_dict):
     tags = list(set(df.TAG))
     scatter_fig = plot_root + '_scatter_all.pdf'
     density_fig = plot_root + '_scatter_all_density.pdf'
-    if not os.path.isfile(scatter_fig) or not os.path.isfile(density_fig):
-        print('reading in data')
-        color_map = {"proj":(1,0,0),'core':(0,0,1)}
-        print(tags)
-        plot_2d(df,scatter_fig,tags=tags,color_map=color_map,max_size = 10000,alpha_map={"core":.1,'proj':.3})
-        plot_2d_density(df,density_fig,tags=tags,color_map=color_map,max_size=20000)
+    print('reading in data')
+    color_map = {"proj":(1,0,0),'core':(0,0,1)}
+    print(tags)
+    plot_2d(df,scatter_fig,tags=tags,color_map=color_map,max_size = 20000,alpha_map={"core":.1,'proj':.3})
+    #plot_2d_density(df,density_fig,tags=tags,color_map=color_map,max_size=20000)
 
 
     tag_df = pd.DataFrame(tag_dict.items(),columns=["IID","TAG"]).set_index("IID")
@@ -156,14 +153,11 @@ def plot_projection(ref_scores,proj_scores,plot_root,tag_dict):
 
     tag_scatter = plot_root + '_scatter_tags.pdf'
     tag_density = plot_root + '_scatter_tags-density.pdf'
-    if not all([os.path.isfile(elem) for elem in [tag_scatter,tag_density]]):
-        plot_2d(df,tag_scatter,tags=tags,max_size = 10000)
-        lw= {elem:.3 for elem in tags}
-        lw["proj"] = 1
-        plot_2d_density(df,tag_density,tags=tags,max_size=np.inf,linewidths=lw,levels = 2)
-    else:
-        print(f"{tag_scatter} already generated")
-        print(f"{tag_density} already generated")
+    
+    plot_2d(df,tag_scatter,tags=tags,max_size = 20000)
+    lw= {elem:.3 for elem in tags}
+    lw["proj"] = 1
+    #plot_2d_density(df,tag_density,tags=tags,max_size=np.inf,linewidths=lw,levels = 2)
     plot_tags(df,plot_root,tags)
 
 
@@ -182,9 +176,6 @@ def return_bin_data(data,n_bins =40):
 def plot_tags(df,plot_root,tags):
 
     save_fig = plot_root + '_tags_pc_density.pdf'
-    if os.path.isfile(save_fig):
-        print(f"{save_fig} already generated")
-        return
 
     tags.insert(0, tags.pop(tags.index("proj")))
 
@@ -220,9 +211,7 @@ def plot_tags(df,plot_root,tags):
         for tick in ax.yaxis.get_major_ticks():tick.label.set_fontsize(6)
 
     handles,labels = ax.get_legend_handles_labels()
-    print(labels)
     by_label = dict(zip(labels, handles))
-    print(by_label)
     leg = ax.legend(by_label.values(),by_label.keys(),loc="lower left", numpoints=1, fancybox = True,prop={'size':4})
     
     fig.savefig(save_fig)
@@ -261,27 +250,25 @@ def calculate_probs(proj_scores,ref_scores,tag_dict,out_root):
 
     # read in pc data
     proj_data = pd.read_csv(proj_scores,usecols=['IID','PC1_AVG','PC2_AVG','PC3_AVG'],index_col = 0,sep='\t')
+    df_prob = pd.DataFrame(index=proj_data.index)
     # samples
     samples = proj_data.index.values
-    df_prob = pd.DataFrame(index=proj_data.index)
+    # convert df to array
     proj_data = proj_data.to_numpy()
         
-    out_probs = out_root + "_tag_probs.txt"
-    if not os.path.isfile(out_probs):
-        print(f"Calculating tag avg/cov...")
-        # calculate average and covariance for each core group
-        tag_avg_cov = generate_tag_data(tag_dict,ref_scores,out_root)
-        print(f"Saving probs to {out_probs}")
-        for tag in tag_avg_cov:
-            print(tag)
-            avg,cov = tag_avg_cov[tag]
-            tag_dist = cdist(proj_data,avg,metric = 'mahalanobis',VI = cov).flatten()**2
-            tag_prob = 1 - chi2.cdf(tag_dist,3)
-            df_prob[tag] = tag_prob
+    print(f"Calculating tag avg/cov...")
+    # calculate average and covariance for each core group
+    tag_avg_cov = generate_tag_data(tag_dict,ref_scores,out_root)
+    for tag in tag_avg_cov:
+        print(tag)
+        avg,cov = tag_avg_cov[tag]
+        tag_dist = cdist(proj_data,avg,metric = 'mahalanobis',VI = cov).flatten()**2
+        tag_prob = 1 - chi2.cdf(tag_dist,3)
+        df_prob[tag] = tag_prob
     
-        df_prob.to_csv(out_probs)
+   # df_prob.to_csv(out_probs)
 
-    df_prob = pd.read_csv(out_probs,index_col=0)
+    #df_prob = pd.read_csv(out_probs,index_col=0)
     if "NA" in df_prob: df_prob = df_prob.drop(["NA"],axis=1)
     print(df_prob)
 
@@ -303,11 +290,13 @@ def main(args):
     pca_path = os.path.join(args.out_path,'pca')
     make_sure_path_exists(pca_path)
     pca_root = os.path.join(pca_path,args.name)
+
+    plink_cmd = f"plink2 {args.pargs}"
     if args.merge:
         pretty_print("MERGE-PCA")
-        ref_scores,proj_scores =  merge_pca(pca_root,args.ref_bed,args.proj_bed,args.extract)
+        ref_scores,proj_scores =  merge_pca(pca_root,args.ref_bed,args.proj_bed,plink_cmd,args.extract,args.force)
     else:
-        ref_scores,proj_scores = run_pca(pca_root,args.ref_bed,args.proj_bed,args.extract)
+        ref_scores,proj_scores = run_pca(pca_root,args.ref_bed,args.proj_bed,plink_cmd,args.extract)
 
     plot_path = os.path.join(args.out_path,'plot')
     plot_root = os.path.join(plot_path,args.name)
@@ -336,7 +325,13 @@ if __name__=='__main__':
     parser.add_argument('-o',"--out_path",type = str, help = "Folder in which to save the results", required = True)
     parser.add_argument("--sample-info", type=file_exists, help =  "Tsv file with sample data, used for grouping.", required = True)
     parser.add_argument('--plot',action = 'store_true',help = 'Plotting',default = False)
-    parser.add_argument('--merge',action = 'store_true',help = "No projection but only PCA in merged dataset.",default = False)
+    parser.add_argument('--force',action = 'store_true',help = 'Recompute PCA',default = False)
+    
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--proj', action='store_true')
+    group.add_argument('--merge', action='store_true')
+
+    parser.add_argument("--pargs", type=str,help ="Plink pca args",default = " --geno --maf")
     parser.add_argument("--extract", type=file_exists, help =  "Snps to use.", required = False)
     args = parser.parse_args()
     make_sure_path_exists(args.out_path)
