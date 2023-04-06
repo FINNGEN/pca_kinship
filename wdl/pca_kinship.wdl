@@ -92,7 +92,7 @@ task pca {
   }
     
   Int disk_size =   ceil(size(bed_file,"GB"))*6 + ceil(size(tg_bed,"GB")) + 100
-  Int mem = ceil(size(bed_file,"GB"))*2 + 10
+  Int mem = ceil(size(bed_file,"GB"))*3 + 10
   
   String out_path = "/cromwell_root/"
   String out_file = prefix + "_output.log"
@@ -126,8 +126,9 @@ task pca {
   output {
     File readme = "~{out_path}/${prefix}_pca_readme"
     #DATA
-    Array[File] data =    glob("/cromwell_root/data/${prefix}*") #DOCUMENTATION
-    Array[File] doc =    glob("/cromwell_root/documentation/${prefix}*") 
+    Array[File] data =    glob("/cromwell_root/data/${prefix}*")
+    #DOCUMENTATION
+    Array[File] doc =    glob("/cromwell_root/documentation/${prefix}*")
   }
 }
 

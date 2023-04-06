@@ -1,9 +1,9 @@
 {
     #WORKLOW INPUTS
     "pca_kinship.test": False,
-    "pca_kinship.prefix": "finngen_R10",
-    "pca_kinship.min_pheno" : "gs://fg-datateam-analysisteam-share/fromdatateam/R10/phenotype_internal_1.0/data/finngen_R10_minimum_internal_1.0.txt.gz",
-    "pca_kinship.sample_data": "gs://r10-data/samples/r10_tags.tsv",
+    "pca_kinship.prefix": "finngen_R11",
+    "pca_kinship.min_pheno" : "gs://thl-incoming-data/from_THL_registerteam/finngen_R11/phenotype_1.0/data/finngen_R11_minimum_extended_1.0.txt.gz",
+    "pca_kinship.sample_data": "gs://r11-data/pca/r11_tags.txt",
     #PRUNE INPUTS
     "pca_kinship.prune_panel.plink_path": "gs://finngen-imputation-panel/sisu4.2/plink/sisu4.2",
     "pca_kinship.prune_panel.info_score": "gs://r10-data/annotate/r10_info_score.txt.gz",
@@ -21,7 +21,7 @@
     "pca_kinship.chrom_convert.pargs":  " --allow-extra-chr --double-id  --maf ",
     "pca_kinship.chrom_convert.cpu": 32,
     "pca_kinship.chrom_convert.mem": 8,
-    "pca_kinship.chrom_convert.chromPath": "gs://r10-data/vcf/finngen_R10_chr_chrCHROM.vcf.gz",
+    "pca_kinship.chrom_convert.chromPath": "gs://r11-data/vcf/finngen_R11_chrCHROM.vcf.gz",
 
     #MERGE INPUTS
     "pca_kinship.merge_plink.mem": 64,

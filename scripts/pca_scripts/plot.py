@@ -13,6 +13,7 @@ from itertools import combinations
 from pca_scripts.color_dict import color_dict
 from utils import make_sure_path_exists,identify_separator,mapcount,tmp_bash
 from collections import Counter
+import scipy.stats as st
 
 
 ##########################
@@ -469,6 +470,7 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
         lh._sizes = [50]
         
     fig.savefig(out_file)
+    fig.savefig(out_file.replace('.pdf','.png'),dpi=300)
     plt.close()
 
 
@@ -553,6 +555,7 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     plt.setp(ax2.get_xticklabels(), visible=False)
     plt.setp(ax1.get_xticklabels(), visible=False)
     fig.savefig(out_file)
+    fig.savefig(out_file.replace('.pdf','.png'),dpi=300)
     plt.close()
 
 
@@ -565,3 +568,94 @@ def trim_axis(ax):
         ax.get_yaxis().tick_left()
     except:
         pass
+
+
+
+def plot_2d_density(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],color_map=None,tag_column="TAG",max_size = 3000,max_map=None,pc_tags=None,axis_legend =2,legend_location = "lower left",legend_fontsize=6,linewidths=None,levels = 3):
+
+
+    fig = plt.figure()
+    gs = mpl.gridspec.GridSpec(3,1)
+
+    ax1 = fig.add_subplot(gs[0,0])
+    ax2 = fig.add_subplot(gs[1,0],sharex = ax1)
+    ax3 = fig.add_subplot(gs[2,0],sharex = ax1)
+    axes=[ax1,ax2,ax3]
+
+    if not pc_tags: pc_tags = pc_columns
+    line_dict = dd(lambda:.6)
+    if linewidths:
+        for tag in linewidths :line_dict[tag] = linewidths[tag]
+
+    if not color_map:
+        color_maps = list(color_dict[len(tags)]['qualitative'].keys())
+        cm = 'Set1' if 'Set1' in color_maps else color_maps[0]
+        color_map = {tag:color_dict[len(tags)]['qualitative'][cm][i] for i,tag in enumerate(tags)}
+
+
+    max_sizes = dd(lambda:max_size)
+    if max_map:
+        for key in max_map: max_sizes[key] = max_map[key]
+
+    import matplotlib.patches as mpatches
+
+    handles = []
+    for i,tag in enumerate(tags):
+        tag_data = pc_data[pc_data[tag_column] == tag]
+        color = color_map[tag]
+        max_data = max_sizes[tag]
+        n = min(max_data,len(tag_data))
+        tag_data = tag_data.sample(n=n)
+        patch = mpatches.Patch(color=color, label=tag)
+        handles.append(patch)
+        print(tag,len(tag_data))
+        for i,pcs in enumerate(list(combinations(pc_columns,2)) ):
+            ax = axes[i]
+            print(tag,pcs)
+
+            x = tag_data[pcs[0]]
+            y = tag_data[pcs[1]]
+            xmin,xmax=min(x),max(x)
+            ymin,ymax=min(y),max(y)
+            # Peform the kernel density estimate
+            xx, yy = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
+
+            # DUMP DATA
+            positions = np.vstack([xx.ravel(), yy.ravel()])
+            values = np.vstack([x, y])
+            kernel = st.gaussian_kde(values)
+            f = np.reshape(kernel(positions).T, xx.shape)
+            
+            #data_path =os.path.splitext(out_file)[0]
+            ##print(f"generating data --> {save_dump}")
+            #np.savetxt(save_dump,f)
+            #print(f"loading {save_dump}")
+            #f = np.loadtxt(save_dump)
+
+            ax.contour(xx, yy, f,colors=[color],linewidths=line_dict[tag],levels =levels,linestyles = 'dashed' )
+
+
+
+    for i,tags in enumerate(list(combinations(pc_tags,2))):
+        tag1,tag2 = tags
+        ax = axes[i]
+        ax.set_xlabel(tag1)
+        ax.set_ylabel(tag2)
+        trim_axis(ax)
+        ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
+        ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
+        for tick in ax.xaxis.get_major_ticks():
+            tick.label.set_fontsize(6)
+        for tick in ax.yaxis.get_major_ticks():
+            tick.label.set_fontsize(6)
+
+    leg_ax = axes[axis_legend]
+    leg = leg_ax.legend(loc=legend_location,handles=handles,numpoints=1, fancybox = True,prop={'size': legend_fontsize})
+    
+
+    plt.setp(ax2.get_xticklabels(), visible=False)
+    plt.setp(ax1.get_xticklabels(), visible=False)
+    fig.savefig(out_file)
+    fig.savefig(out_file.replace('.pdf','.png'),dpi=300)
+    plt.close()
+    
