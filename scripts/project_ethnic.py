@@ -76,7 +76,10 @@ def merge_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract=None,force=False):
         proj.write(new_header)
         ref.write(new_header)
         for line in i:
-            iid = line.strip().split()[1]
+            line = line.strip().split()
+            iid = line[1]
+            if line [0] == "0": line[0] = iid
+            line = '\t'.join(line) + '\n'            
             if iid in ref_iids:ref.write(line)
             elif iid in proj_iids:proj.write(line)
             else:"iid missing, we have a problem!"
@@ -250,6 +253,7 @@ def calculate_probs(proj_scores,ref_scores,tag_dict,out_root):
 
     # read in pc data
     proj_data = pd.read_csv(proj_scores,usecols=['IID','PC1_AVG','PC2_AVG','PC3_AVG'],index_col = 0,sep='\t')
+    print(proj_data)
     df_prob = pd.DataFrame(index=proj_data.index)
     # samples
     samples = proj_data.index.values
