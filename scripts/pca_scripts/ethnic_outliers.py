@@ -199,12 +199,13 @@ def build_superpop(args):
                     sample = line.strip().split()[0]
                     o.write(sample+ '\t' + tag_dict[sample] + '\n')
 
-
     # read in annotation for all samples
     with open(annot_pop) as i: tag_dict = {sample:pop for sample,pop in (line.strip().split() for line in i)}
 
-    
-    fg_tags = {tag_dict[sample] for sample in np.loadtxt(args.merged_plink_file + ".fg.samples",dtype=str)}
+    fg_tags = {}
+    with open(args.merged_plink_file + ".fg.samples",'r') as i:
+        for sample in [line.strip() for line in i]:
+            tag = tag_dict[sample]
     return annot_pop,fg_tags
 
 
