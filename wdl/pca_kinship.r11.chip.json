@@ -1,0 +1,37 @@
+{
+    "pca_kinship.test": false,
+    "pca_kinship.prefix": "finngen_R11",
+    "pca_kinship.min_pheno" : "gs://finngen-production-library-red/finngen_R11/phenotype_1.0/data/finngen_R11_minimum_extended_1.0.txt.gz",
+    "pca_kinship.sample_data": "gs://r11-data/pca/r11_tags.txt",
+
+    "pca_kinship.prune_panel.plink_path": "gs://finngen-production-library-red/finngen_R11/chipd_1.0/data/plink/r11_axiom_chip_allchr",
+    "pca_kinship.prune_panel.info_score": "gs://r11-data/chip/r11_fake_info.gz",
+    "pca_kinship.prune_panel.info_filter": 0.9,
+    "pca_kinship.prune_panel.cpu": 16,
+    "pca_kinship.prune_panel.mem": 4,
+    "pca_kinship.prune_panel.ld_params": "500 50 0.9 0.05",
+    "pca_kinship.prune_panel.pargs": " ' --snps-only --chr 1-22 --max-alleles 2 --maf 0.01 ' ",
+    "pca_kinship.prune_panel.target": "200000",
+
+    "pca_kinship.pca.cpu": 64,
+    
+    "pca_kinship.chrom_convert.pargs":  " --allow-extra-chr --double-id  --maf ",
+    "pca_kinship.chrom_convert.cpu": 32,
+    "pca_kinship.chrom_convert.mem": 8,
+    "pca_kinship.chrom_convert.chromPath": "gs://finngen-production-library-red/finngen_R11/chipd_1.0/data/vcf/r11_axiom_chrCHROM.vcf.gz",
+
+    "pca_kinship.merge_plink.mem": 64,
+    "pca_kinship.merge_plink.cpu": 32,
+    "pca_kinship.merge_plink.pargs": "--allow-extra-chr  ",
+    
+    "pca_kinship.kinship.cpu": 95,
+
+    "pca_kinship.filter_tg.tg_root": "gs://thousand_genome/1kg",  
+    "pca_kinship.filter_tg.cpu":32,
+    "pca_kinship.filter_tg.mem":8,
+    
+    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.test",
+    "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.fam.3",
+    "pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.fam.3"
+
+}
