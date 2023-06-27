@@ -373,7 +373,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--bed', type=file_exists, help="BED filepath", required=True)
     parser.add_argument("-o","--out-path", type=str, help="folder in which to save the results", required=True)
-    parser.add_argument('--prefix',  type=str, help="Output prefix", required=True)
+    parser.add_argument('--prefix',  type=str, help="Output prefix")
     parser.add_argument('--force',help='Flag on whether to force run',action = "store_true")
     parser.add_argument('--release',help='Flag to structure output for release',action = "store_true")
     parser.add_argument('--plot',help='Flag to plot',action = "store_true")
@@ -392,6 +392,8 @@ if __name__ == "__main__":
     if args.plot:
         if not args.meta:
             raise ValueError('batch data required')
+    if not args.prefix:
+        args.prefix = os.path.basename(args.bed).replace('.bed','')
         
     make_sure_path_exists(args.out_path)
     args.misc_path = os.path.join(args.out_path,'misc')
