@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.7
 
-import os,pickle, subprocess,shlex,argparse,shutil,glob,logging,json
+import os,pickle, subprocess,shlex,argparse,shutil,glob,logging,json,sys
 from pathlib import Path
 from utils import basic_iterator,return_header,mapcount,get_path_info,file_exists,make_sure_path_exists,cpus,tmp_bash,pretty_print,NamedTemporaryFile,get_filepaths,read_int,log_levels,print_msg_box,progressBar
 from collections import defaultdict as dd
@@ -50,8 +50,9 @@ def kinship(args):
     Path(args.dup_file).touch() #there could be no duplicates
     if not os.path.isfile(args.kin_file) or mapcount(args.kin_file)  < 1 or args.force:
         args.force = True
-        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate   --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot |  tee -a {args.kinship_log_file}.kinship'
+        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate   --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot 2>  {args.kinship_log_file}.kinship'
         tmp_bash(cmd,True)
+
         # filter un/4th
         kin_filter = args.kin_file.replace('kin0','tmp')
         cmd = f"cat {args.kin_file} | grep -vw 'UN'  | grep -vw '4th' > {kin_filter} && mv {kin_filter} {args.kin_file} && rm {kin_filter}"
