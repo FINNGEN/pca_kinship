@@ -50,7 +50,8 @@ def kinship(args):
     Path(args.dup_file).touch() #there could be no duplicates
     if not os.path.isfile(args.kin_file) or mapcount(args.kin_file)  < 1 or args.force:
         args.force = True
-        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate   --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} --rplot 2>  {args.kinship_log_file}.kinship'
+        plot = "--rplot" if args.plot else ""
+        cmd = f'king --cpus {cpus} -b {args.kinship_bed} --related --duplicate   --degree 3 --prefix {os.path.join(args.kinship_path,args.prefix)} {plot} | tee -a {args.kinship_log_file}.kinship'
         tmp_bash(cmd,True)
 
         # filter un/4th
@@ -128,7 +129,11 @@ def return_sample_dict(args):
     if not os.path.isfile(sex_dict_file) or args.force:
         logging.info("Sex dict missing, loading data")
         args.force = True
-        df = pd.read_csv(args.pheno_file,sep='\t',usecols=['FINNGENID','SEX','BL_YEAR','BL_AGE'],index_col=0)
+        header = return_header(args.pheno_file)
+        if header[0] != 'FINNGENID':
+            logging.warning(f"Using {header[0]} instead of FINNGENID")
+            
+        df = pd.read_csv(args.pheno_file,sep='\t',usecols=[header[0],'SEX','BL_YEAR','BL_AGE'],index_col=0)
         #create YOB column
         df['YEAR'] = df.BL_YEAR - df.BL_AGE
         #update sex to match fam format
