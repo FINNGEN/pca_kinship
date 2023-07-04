@@ -1,0 +1,27 @@
+{
+    #GLOBAL PARAMS
+    "pca_chip.test": False,
+    "pca_chip.prefix": "chip_R11",
+    "pca_chip.min_pheno" : "gs://thl-incoming-data/from_THL_registerteam/finngen_R11/phenotype_1.0/data/finngen_R11_minimum_extended_1.0.txt.gz",
+    "pca_chip.chip_plink_root": "gs://r11-data/chip/plink/r11_axiom_chip_allchr",
+    "pca_chip.sample_data": "gs://r11-data/pca/r11_tags.txt",
+
+    #TASK PARAMS
+    "pca_chip.prune_panel.target": 150000,
+    "pca_chip.prune_panel.pargs": "' --snps-only --chr 1-22 --max-alleles 2 --maf 0.01 '",
+    "pca_chip.prune_panel.ld_params": "500 50 0.9 0.05",
+    "pca_chip.prune_panel.panel_root": "gs://finngen-imputation-panel/sisu4.2/plink/sisu4.2",
+    "pca_chip.filter_tg.tg_root": "gs://thousand_genome/1kg",  
+    "pca_chip.pca.cpu": 32,
+
+
+    #DOCKERS
+    "pca_chip.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.test",
+    "pca_chip.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r11.chip.2",
+
+    #"pca_chip.prune_panel.prune_docker": "String? (optional)",
+    "pca_chip.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r11.chip.1",
+
+
+    
+}
