@@ -95,6 +95,7 @@ if __name__=='__main__':
     #SAMPLE DATA
     parser.add_argument("--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
     parser.add_argument("--meta", type=file_exists, help =  "Path to file with regionofbirth info", required = True)
+    parser.add_argument("--tg-info", action='store', type=str, nargs=3, help =  "Path to csv file with sample,batch")
 
 
     #KINSHIP
@@ -132,7 +133,8 @@ if __name__=='__main__':
     args.misc_path =  os.path.join(args.out_path, 'misc/')
     make_sure_path_exists([args.out_path,args.misc_path,args.data_path])
     args.sample_fam = args.bed.replace('.bed','.fam')
-
+    if not args.tg_info:
+        args.tg_info =  [os.path.join(args.data_path,'20130606_sample_info.txt'),0,2]
     args.success = False
     success = main(args)
     

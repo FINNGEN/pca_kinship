@@ -171,9 +171,11 @@ def build_superpop(args):
         print(superpop_dict)
 
         # sample info for tg
-        tg_pop = os.path.join(args.data_path,'20130606_sample_info.txt')
-           # get index of pop column and build sample to population dictionary
-        cols = [return_header(tg_pop).index(elem) for elem in ['Sample','Population']]
+        
+        # get index of pop column and build sample to population dictionary
+        #cols = [return_header(tg_pop).index(elem) for elem in ['Sample','Population']]
+        tg_pop =args.tg_info[0]
+        cols = list(map(int,args.tg_info[1:])) 
         pop_dict = {sample:pop for sample,pop in basic_iterator(tg_pop,columns = cols)}
 
         # now i build a sample to pop dictionary where i keep superpop unless it's a Finn

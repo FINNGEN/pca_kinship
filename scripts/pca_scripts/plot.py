@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 import os,unidecode,natsort
 from itertools import combinations
 from pca_scripts.color_dict import color_dict
-from utils import make_sure_path_exists,identify_separator,mapcount,tmp_bash
+from utils import make_sure_path_exists,identify_separator,mapcount,tmp_bash,return_header
 from collections import Counter
 import scipy.stats as st
 
@@ -51,10 +51,11 @@ def save_data(region_data,eigenvec_data,out_path):
         loc_df = get_loc_df()
 
         # read in birth data of samples
-        birth_df = pd.read_csv(region_data,sep='\t',usecols = ["FINNGENID","regionofbirthname"],index_col='FINNGENID')
+        id_col = return_header(region_data)[0]
+        birth_df = pd.read_csv(region_data,sep='\t',usecols = [id_col,"regionofbirthname"],index_col=id_col)
         usecols = ['PC' + str(pc) for pc in ["1","2","3"]]
         eigenvec = pd.read_csv(eigenvec_data, sep = '\t',index_col = 'IID')[usecols]
-        eigenvec.index.names = ['FINNGENID']
+        eigenvec.index.names = [id_col]
         print(birth_df.head())
         print(eigenvec.head())
 
