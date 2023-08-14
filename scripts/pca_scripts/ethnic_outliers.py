@@ -1,4 +1,4 @@
-from utils import np,mapcount,basic_iterator,return_header,write_fam_samplelist,make_sure_path_exists,tmp_bash,identify_separator,superpop_dict,merge_files
+from utils import np,mapcount,basic_iterator,return_header,write_fam_samplelist,make_sure_path_exists,tmp_bash,identify_separator,merge_files
 import pandas as pd
 import csv
 from scipy.spatial.distance import cdist
@@ -165,45 +165,38 @@ def build_superpop(args):
     
     # sample to super pop mapping file
     annot_pop =  os.path.join(args.misc_path, args.name + '_sample_annot.tsv')
-    if not os.path.os.path.isfile(annot_pop) or args.force or mapcount(annot_pop) < 2:
-        args.logging.info(f'generating super pop dict {annot_pop}')
+    args.logging.info(f'generating super pop dict {annot_pop}')
 
-        print(superpop_dict)
 
-        # sample info for tg
-        tg_pop = os.path.join(args.data_path,'20130606_sample_info.txt')
-           # get index of pop column and build sample to population dictionary
-        cols = [return_header(tg_pop).index(elem) for elem in ['Sample','Population']]
-        pop_dict = {sample:pop for sample,pop in basic_iterator(tg_pop,columns = cols)}
+    # sample info for tg
+    #g_pop = os.path.join(args.data_path,'20130606_sample_info.txt')
+    # get index of pop column and build sample to population dictionary
+    cols = [return_header(args.tg_pop).index(elem) for elem in ['Sample','Population']]
+    pop_dict = {sample:pop for sample,pop in basic_iterator(args.tg_pop,columns = cols)}
+    
+    # now i build a sample to pop dictionary where i keep superpop unless it's a Finn
+    with open(annot_pop,'wt') as o:
+        o.write('IID' +'\t' + 'SuperPops\n')
 
-        # now i build a sample to pop dictionary where i keep superpop unless it's a Finn
-        with open(annot_pop,'wt') as o:
-            o.write('IID' +'\t' + 'SuperPops\n')
+        # read in sample tags and assign "other" if missing
+        tag_dict = defaultdict(lambda:"Other")
+           
+        # loop through input tg fam file and update population data
+        for sample in basic_iterator(args.tg_bed.replace('.bed','.fam'),columns = 1):
+            tag_dict[sample] = pop_dict[sample]
 
-            # read in sample tags and assign "other" if missing
-            tag_dict = defaultdict(lambda:"Other")
-            
-            # loop through input tg fam file and update population data
-            for sample in basic_iterator(args.tg_bed.replace('.bed','.fam'),columns = 1):
-                pop = pop_dict[sample] # fetch country
-                # assign FIN else suerpop
-                tag_dict[sample] = pop if pop =='FIN'else superpop_dict[pop]
+        # read in sample data
+        for sample,tag in basic_iterator(args.sample_info,separator =identify_separator(args.sample_info)):
+            tag_dict[sample] = tag
 
-            # read in sample data
-            for sample,tag in basic_iterator(args.sample_info,separator =identify_separator(args.sample_info)):
-                tag_dict[sample] = tag
-
-            # now i loop through all samples fro merged plink file and assign to each id a tag
-            with open(args.merged_plink_file + '.id') as i:
-                for line in i:
-                    sample = line.strip().split()[0]
-                    o.write(sample+ '\t' + tag_dict[sample] + '\n')
-
+        # now i loop through all samples fro merged plink file and assign to each id a tag
+        with open(args.merged_plink_file + '.id') as i:
+            for line in i:
+                sample = line.strip().split()[0]
+                o.write(sample+ '\t' + tag_dict[sample] + '\n')
 
     # read in annotation for all samples
-    with open(annot_pop) as i: tag_dict = {sample:pop for sample,pop in (line.strip().split() for line in i)}
-
-    
+    with open(annot_pop) as i: tag_dict = {sample:pop for sample,pop in (line.strip().split() for line in i)}    
     fg_tags = {tag_dict[sample] for sample in np.loadtxt(args.merged_plink_file + ".fg.samples",dtype=str)}
     return annot_pop,fg_tags
 

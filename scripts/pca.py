@@ -95,7 +95,7 @@ if __name__=='__main__':
     #SAMPLE DATA
     parser.add_argument("--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
     parser.add_argument("--meta", type=file_exists, help =  "Path to file with regionofbirth info", required = True)
-
+    parser.add_argument("--tg-pop", type=file_exists, help =  "Path to file with regionofbirth info")
 
     #KINSHIP
     parser.add_argument('--degree',type=int,help='Degree for Kinship',default = 2)
@@ -132,7 +132,8 @@ if __name__=='__main__':
     args.misc_path =  os.path.join(args.out_path, 'misc/')
     make_sure_path_exists([args.out_path,args.misc_path,args.data_path])
     args.sample_fam = args.bed.replace('.bed','.fam')
-
+    if not args.tg_pop:
+        args.tg_pop = os.path.join(args.data_path,'1kg_meta.txt')
     args.success = False
     success = main(args)
     
