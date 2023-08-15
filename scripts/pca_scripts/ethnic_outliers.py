@@ -215,7 +215,7 @@ def fin_eur_probs(args,eur_outlier_path,pc_filter,finn_prob_filter):
     fin_data = np.loadtxt(eur_outlier_path+ 'fin.eigenvec',dtype = float, skiprows = 1,usecols = range(1,pc_filter+1))      
     fin_avg = np.reshape(np.average(fin_data,axis = 0),(1,fin_data.shape[1]))
     fin_cov = np.linalg.inv(np.cov(fin_data.T))
-    # read in FINNGEN sample data
+    # read in FINNGEN sample data as ground truth
     finngen_data = np.loadtxt(eur_outlier_path+ 'finngen.eigenvec',dtype = float, skiprows = 1,usecols = range(1,pc_filter+1))
     # MAHALANOBIS DISTANCES
     eur_dist = cdist(finngen_data,eur_avg,metric = 'mahalanobis',VI = eur_cov).flatten()**2
@@ -224,9 +224,11 @@ def fin_eur_probs(args,eur_outlier_path,pc_filter,finn_prob_filter):
     p_eur =  1 - chi2.cdf(eur_dist,pc_filter)
     p_fin =  1 - chi2.cdf(fin_dist,pc_filter)
     f_prob = p_fin/(p_fin + p_eur)
+    # save data
     np.savetxt(args.misc_path + "eur.txt",p_eur)
     np.savetxt(args.misc_path + "fin.txt",p_fin)
     np.savetxt(args.misc_path + "prob.txt",f_prob)
+    # return outliers
     fin_mask = (f_prob < finn_prob_filter)
     print(f'outliers: {fin_mask.sum()}')
     eur_outliers = np.loadtxt(eur_outlier_path+ 'finngen.eigenvec',dtype = str, skiprows = 1,usecols = 0 )[fin_mask]
