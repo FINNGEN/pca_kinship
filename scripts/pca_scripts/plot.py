@@ -295,11 +295,14 @@ def plot_first_round_outliers(args):
     ethnic_plot = os.path.join(args.plot_path,args.name +'_ethnic_outliers.pdf')
     ethnic_2d = os.path.join(args.plot_path,args.name +'_ethnic_outliers_pairwise.pdf')
 
-    # create data
+
+    size_map = {"STRANGE_FIN":10}
+    alpha_map = {"STRANGE_FIN":1}
+    # createdata
     if not os.path.isfile(ethnic_plot) or not os.path.isfile(ethnic_2d):
         tags,pc_data,color_map = return_outliers_df(args)
 
-
+    
     #plot 3d
     if not os.path.isfile(ethnic_plot):
         #build super pop dict for plotting
@@ -310,7 +313,7 @@ def plot_first_round_outliers(args):
         #args.v_print(3,'ethnic outliers 3d plot already done.')
 
     if not os.path.isfile(ethnic_2d):
-        plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map)
+        plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map,size_map=size_map,alpha_map=alpha_map)
     else:
         pass
         #args.v_print(3,'ethnic outliers pairwise plot already done.')

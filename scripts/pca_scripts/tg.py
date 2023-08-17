@@ -21,7 +21,8 @@ def tg_bed(args):
         args.force = True
         
         args.logging.info(f"Building new plink data {merged_plink_file}")
-        cmd = f'plink --bfile {args.bed.replace(".bed","")} --bmerge {args.tg_bed.replace(".bed","")}  --memory {int(mem_mib)} --make-bed --out {merged_plink_file} --extract {args.bed.replace(".bed",".bim")} ' 
+        extract = f" {args.extract}" if args.extract else f'{args.bed.replace(".bed",".bim")}'
+        cmd = f'plink --bfile {args.bed.replace(".bed","")} --bmerge {args.tg_bed.replace(".bed","")}  --memory {int(mem_mib)} --make-bed --out {merged_plink_file} --extract  {extract}' 
         args.logging.debug(cmd)
         subprocess.call(shlex.split(cmd))
 

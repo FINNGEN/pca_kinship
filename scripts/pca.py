@@ -117,7 +117,7 @@ if __name__=='__main__':
     parser.add_argument('--test',action = "store_true",help = 'Flag for quick pca_outlier method without plots.')
     parser.add_argument("--cpus",type = int, help = "Number of cpus to use (default available cpus)", default =  multiprocessing.cpu_count())
     parser.add_argument('--release',action = 'store_true',help = 'Flag for data release',default = False)
-
+    parser.add_argument("--extract", type=file_exists, help =  "Snps to include")
 
 
     args = parser.parse_args()    
