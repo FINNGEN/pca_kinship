@@ -23,11 +23,19 @@ for i,key in enumerate(inf_types):inf_dict[key] = i
 def read_batch_data(args):
 
     # here i read in the sample dict
+    tag_dict = dd(lambda :"Other")
     with open(args.sample_info)as i:
-        tag_dict = dict(line.strip().split(maxsplit=1) for line in i)
+        for line in i:
+            sample,tag = line.strip().split()
+            tag_dict[sample] = tag
   
     # assign tag to all samples in fam file
     sample_batch_dict = dd(lambda :"Other")
+    with open(args.kinship_bed.replace('bed','fam')) as fam:
+        for line in fam:
+            sample = line.split(maxsplit=1)[0]
+            #sample_batch_dict[sample] = tag_dict[sample]
+
     samples = np.loadtxt(args.kinship_bed.replace('bed','fam'),dtype=str,usecols =0)
     for sample in samples:
         sample_batch_dict[sample] = tag_dict[sample]

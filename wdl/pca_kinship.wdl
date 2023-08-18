@@ -362,7 +362,7 @@ task filter_tg {
   File tg_fam = tg_root + '.fam'
   File tg_bim = tg_root + '.bim'
   
-  Int disk_size =  ceil(size(tg_bed,'GB'))*4 + 10
+  Int disk_size =  ceil(size(tg_bed,'GB'))*4 + 11
   String out_root = prefix + "_1kg"
 
   String? final_docker = if defined(tg_docker) then tg_docker else docker
@@ -377,7 +377,6 @@ task filter_tg {
     docker: "~{final_docker}"
     cpu: "~{cpu}"
     disks: "local-disk ~{disk_size} HDD"
-    bootDiskSizeGb: 20
     zones: "europe-west1-b europe-west1-c europe-west1-d"
     memory: "~{mem} GB"
     preemptible: 0
