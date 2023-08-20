@@ -238,9 +238,11 @@ def plot_batch_data(args):
         return
     
     sample_batch_dict = read_batch_data(args)
-    batches = natsort.natsorted(set(sample_batch_dict.values()))
-
+    counter = Counter(sample_batch_dict.values())
+    batches = natsort.natsorted([elem for elem in counter if counter[elem] > 10])
+    print(batches)
     plot_data = os.path.join(args.misc_path, args.prefix +'_batches_degree.npy')
+
     if not os.path.isfile(plot_data):
         G = read_network(args)
         print(batches)
@@ -272,7 +274,6 @@ def plot_batch_data(args):
         x,y,s = elem
         batch = batches[i]
         ax.scatter(x,y,s/1000,label = batch)
-
 
     # RANDOM GRAPH
     print(max_avg_deg)
