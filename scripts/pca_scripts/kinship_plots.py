@@ -34,11 +34,8 @@ def read_batch_data(args):
     with open(args.kinship_bed.replace('bed','fam')) as fam:
         for line in fam:
             sample = line.split(maxsplit=1)[0]
-            #sample_batch_dict[sample] = tag_dict[sample]
+            sample_batch_dict[sample] = tag_dict[sample]
 
-    samples = np.loadtxt(args.kinship_bed.replace('bed','fam'),dtype=str,usecols =0)
-    for sample in samples:
-        sample_batch_dict[sample] = tag_dict[sample]
     
     return sample_batch_dict
 

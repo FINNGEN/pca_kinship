@@ -196,8 +196,11 @@ def build_superpop(args):
                 o.write(sample+ '\t' + tag_dict[sample] + '\n')
 
     # read in annotation for all samples
-    with open(annot_pop) as i: tag_dict = {sample:pop for sample,pop in (line.strip().split() for line in i)}    
-    fg_tags = {tag_dict[sample] for sample in np.loadtxt(args.merged_plink_file + ".fg.samples",dtype=str)}
+    with open(annot_pop) as i: tag_dict = {sample:pop for sample,pop in (line.strip().split() for line in i)}
+    fg_samples = []
+    with open(args.merged_plink_file + ".fg.samples") as fam:
+        fg_samples.append(line.split(maxsplit=1)[0])
+    fg_tags = {tag_dict[sample] for sample in fg_samples}
     return annot_pop,fg_tags
 
 

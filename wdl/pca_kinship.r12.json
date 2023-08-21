@@ -41,7 +41,7 @@
     #DOCKERS
     "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.1",
     "pca_kinship.kinship.kinship_docker":"eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.2",
-    #"pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.1",
+    "pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.3",
     #"pca_kinship.prune_panel.prune_docker": "String? (optional)",
     #"pca_kinship.merge_plink.merge_docker": "String? (optional)",
     #"pca_kinship.filter_tg.tg_docker": "String? (optional)",
