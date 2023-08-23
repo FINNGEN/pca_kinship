@@ -1,11 +1,19 @@
 {
     #WORKLOW INPUTS
     "pca_kinship.test": False,
-    "pca_kinship.prefix": "finngen_R12_all_samples",
+    "pca_kinship.prefix": "finngen_R12",
     "pca_kinship.min_pheno" : "gs://thl-incoming-data/from_THL_registerteam/finngen_R12/phenotype_internal_1.0/data/finngen_R12_minimum_internal_1.0.txt.gz",
     "pca_kinship.sample_data": "gs://r12-data/pca/r12_tags.txt",
     "pca_kinship.chrom_file_list": "gs://r12-data/pca/r12_path_list.txt",
-    #"pca_kinship.merge_plink.exclusion_list": "",
+    "pca_kinship.merge_plink.exclusion_list": "gs://r12-data/pca/r12_remove_genos_for_sandbox_update.fam",
+
+    #PANEL PATHS
+    #"pca_kinship.filter_tg.tg_root": "gs://thousand_genome/hgdp/HGDP-CHMI",
+    #"pca_kinship.pca.tg_pop": "gs://thousand_genome/hgdp/gnomad_meta_pop_pca.txt",
+    "pca_kinship.filter_tg.tg_root": "gs://thousand_genome/1kg",
+    "pca_kinship.pca.tg_pop": "gs://thousand_genome/20130606_sample_info.txt",
+    
+
     #PRUNE INPUTS
     "pca_kinship.prune_panel.plink_path": "gs://finngen-imputation-panel/sisu4.2/plink/sisu4.2",
     "pca_kinship.prune_panel.info_score": "gs://r10-data/annotate/r10_info_score.txt.gz",
@@ -17,9 +25,8 @@
     "pca_kinship.prune_panel.target": "200000",
 
     #PCA INPUTS
-    "pca_kinship.pca.cpu": 16,
-    "pca_kinship.pca.tg_pop": "gs://thousand_genome/hgdp/gnomad_meta_pop_pca.txt",
-    
+    "pca_kinship.pca.cpu": 32,    
+   
     #CONVERT INPUTS
     "pca_kinship.chrom_convert.pargs":  " --allow-extra-chr --double-id  --maf ",
     "pca_kinship.chrom_convert.cpu": 32,
@@ -34,14 +41,13 @@
     "pca_kinship.kinship.cpu": 95,
 
     #FILTER_TG INPUTS
-    "pca_kinship.filter_tg.tg_root": "gs://thousand_genome/hgdp/HGDP-CHMI",
     "pca_kinship.filter_tg.cpu":32,
     "pca_kinship.filter_tg.mem":8,
     
     #DOCKERS
-    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.1",
-    "pca_kinship.kinship.kinship_docker":"eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.2",
-    "pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.3",
+    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.3",
+    #"pca_kinship.kinship.kinship_docker":"eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.2",
+    #"pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.3",
     #"pca_kinship.prune_panel.prune_docker": "String? (optional)",
     #"pca_kinship.merge_plink.merge_docker": "String? (optional)",
     #"pca_kinship.filter_tg.tg_docker": "String? (optional)",

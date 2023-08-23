@@ -212,7 +212,7 @@ task merge_plink {
   command <<<
     cat ~{write_lines(bed_files)} | sed -e 's/.bed//g' > merge_list.txt
     cat ~{fam_files[0]} | shuf | head -n 50000  > test_fam.txt 
-    plink --merge-list merge_list.txt ~{pargs} --keep-allele-order --memory ~{plink_mem} --make-bed --out ~{name} ~{if defined(exclusion_list) then  " -- exclude " + exclusion_list else "" } ~{if test then " --keep test_fam.txt " else ""}
+    plink --merge-list merge_list.txt ~{pargs} --keep-allele-order --memory ~{plink_mem} --make-bed --out ~{name} ~{if defined(exclusion_list) then  " --remove " + exclusion_list else "" } ~{if test then " --keep test_fam.txt " else ""}
   >>>
   
   runtime {
