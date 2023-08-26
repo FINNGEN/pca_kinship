@@ -1,12 +1,12 @@
 #!/usr/bin/env Rscript
 
-req_packages <- c("optparse","dplyr","ggplot2","data.table","tidyr","plotly","htmlwidgets","MCMCpack","mvtnorm", "ellipse")
-for (pack in req_packages) {
-  if(!require(pack,character.only = TRUE)) {
-    install.packages(pack, repos = c(CRAN = "http://cran.r-project.org"))
-  }
-  require( pack , character.only = TRUE )
-}
+#req_packages <- c("optparse","dplyr","ggplot2","data.table","tidyr","plotly","htmlwidgets","MCMCpack","mvtnorm", "ellipse")
+#for (pack in req_packages) {
+#  if(!require(pack,character.only = TRUE)) {
+#    install.packages(pack, repos = c(CRAN = "http://cran.r-project.org"))
+#  }
+#  require( pack , character.only = TRUE )
+#}
 
 getScriptPath <- function(){
   cmd.args <- commandArgs()
@@ -53,6 +53,10 @@ option_list = list(
   make_option(c("--n_iterations"), type="integer", default=10000,
               help="number of iterations to run MCMC [default]")
   
+make_option(c("--lambda"), type="integer", default=20,
+              help="number of iterations to run MCMC [default]")
+  
+
   )
   
 
@@ -111,7 +115,7 @@ for( i in 1:length(pc_vec)) {
     print(cols)
     dat <-  subset(pca, select=cols)
     print(summary(dat))
-    outliers_lambda20 <- aberrant( dat,  lambda=20, niter = opt$n_iterations)
+    outliers_lambda20 <- aberrant( dat,  lambda=opt$lambda, niter = opt$n_iterations)
     pca[outliers_lambda20$group==1, ]$outlier <- T
     outcols[[length(outcols)+1]] <- paste0("OUTLIERS_", cols,  collapse="_")
     pca[, paste0("OUTLIERS_", cols, collapse = "_")] <- outliers_lambda20$group==1

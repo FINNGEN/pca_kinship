@@ -16,7 +16,7 @@
 
     #PCA INPUTS
     "pca_kinship.pca.cpu": 16,
-    
+    "pca_kinship.pca.lambda": 20,
     #CONVERT INPUTS
     "pca_kinship.chrom_convert.pargs":  " --allow-extra-chr --double-id  --maf ",
     "pca_kinship.chrom_convert.cpu": 32,
@@ -40,6 +40,7 @@
     "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.test",
     "pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.fam.3",
     "pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r10.fam.3",
+
 
     
     #"pca_kinship.prune_panel.prune_docker": "String? (optional)",
