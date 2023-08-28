@@ -102,6 +102,7 @@ if __name__=='__main__':
     parser.add_argument("--kin", type=file_exists, help = "File with king related individuals")
 
     # NUMERIC PARAMS
+    parser.add_argument('--aberrant-lambda',type=int,help='Lambda used by aberrant',default = 20)
     parser.add_argument('--pca-components',type=int,help='Components needed for pca',default = 20)
     parser.add_argument('--pc-filter',type = int,help = 'Number of pcs on which to perform the outlier detection method',default = 3)
     parser.add_argument('--finn-prob-filter',type = float,help = 'Filter falue to decide whether a finngen sample is part of the EUR or FIN centroid',default = 0.95)

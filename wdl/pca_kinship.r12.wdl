@@ -88,6 +88,8 @@ task pca {
     File kin_file
     File metadata
     File tg_pop
+
+    Int aberrant_lambda
     
     String prefix
     String docker
@@ -111,6 +113,7 @@ task pca {
     --sample-info ~{sample_file} \
     --tg-pop ~{tg_pop} \
     --name ~{prefix} \
+    --aberrant-lambda ~{aberrant_lambda} \
     --meta ~{metadata} \
     -o ~{out_path} \
     --release |& tee ~{out_file}

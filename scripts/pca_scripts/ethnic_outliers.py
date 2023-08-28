@@ -116,7 +116,7 @@ def aberrant_outliers(args,tg_pca_file):
         args.force = True
         iterations = ' 1000 -p' if args.test else ' 3000 '
         args.logging.info(f'generating outliers at {tg_pca_file}')
-        cmd  =f"""Rscript {os.path.join(args.parent_path,'scripts/pca_outlier_detection/scripts/classify_outliers.R')}  -f {tg_pca_file+".eigenvec"} -e {tg_pca_file+".eigenval"} -s {args.annot_pop} --n_iterations {iterations}  -o {tg_pca_file} """
+        cmd  =f"""Rscript {os.path.join(args.parent_path,'scripts/pca_outlier_detection/scripts/classify_outliers.R')}  -f {tg_pca_file+".eigenvec"} -e {tg_pca_file+".eigenval"} -s {args.annot_pop} --n_iterations {iterations}  -o {tg_pca_file} --lambda {args.aberrant_lambda}"""
         args.logging.debug(cmd)
         subprocess.call(shlex.split(cmd))
 
