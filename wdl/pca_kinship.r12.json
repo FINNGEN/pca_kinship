@@ -11,7 +11,7 @@
     #"pca_kinship.filter_tg.tg_root": "gs://thousand_genome/hgdp/HGDP-CHMI",
     #"pca_kinship.pca.tg_pop": "gs://thousand_genome/hgdp/gnomad_meta_pop_pca.txt",
     "pca_kinship.filter_tg.tg_root": "gs://thousand_genome/1kg",
-    "pca_kinship.pca.tg_pop": "gs://thousand_genome/20130606_sample_info.txt",
+    "pca_kinship.pca.tg_pop": "gs://thousand_genome/1kg_meta.txt",
     
 
     #PRUNE INPUTS

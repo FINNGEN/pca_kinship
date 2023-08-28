@@ -132,8 +132,6 @@ if __name__=='__main__':
     args.misc_path =  os.path.join(args.out_path, 'misc/')
     make_sure_path_exists([args.out_path,args.misc_path,args.data_path])
     args.sample_fam = args.bed.replace('.bed','.fam')
-    if not args.tg_pop:
-        args.tg_pop = os.path.join(args.data_path,'1kg_meta.txt')
     args.success = False
     success = main(args)
     
