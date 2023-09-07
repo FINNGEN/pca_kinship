@@ -88,7 +88,7 @@ def merge_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract=None,force=False):
                 
     return ref_score,proj_score
 
-def run_apca(pca_root,ref_bed,proj_bed,plink_cmd,extract = None):
+def run_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract = None):
     """
     Here we calculate the PC on the ref set and project the other group onto it.
     """
