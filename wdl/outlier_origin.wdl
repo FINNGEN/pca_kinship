@@ -8,10 +8,37 @@ workflow outlier_origin {
     String name
   }
 
-  call prune_chip {input : docker=docker,plink_path = chip_outlier_root,prefix=name}
-  call first_round_chip { input: docker=docker,snps = prune_chip.snplist,chip_outlier_root=chip_outlier_root}
-  call filter_imputed {input:docker=docker,chip_snps=prune_chip.snplist,chip_outliers_fam = chip_outlier_root + ".fam"}
-  call second_round_imputed {input:docker=docker,chip_outliers_imputed=filter_imputed.chip_outliers_imputed,legacy_outliers_imputed=filter_imputed.legacy_outliers_imputed,chip_outliers_regions=first_round_chip.chip_origin}
+  # PRUNING OF CHIP OUTLIER DATA
+  call prune_chip {
+    input :
+    docker=docker,
+    plink_path = chip_outlier_root,
+    prefix=name
+  }
+  # ASSIGN POP/SUBPOP TO CHIP OUTLIERS
+  call first_round_chip {
+    input:
+    docker=docker,
+    snps = prune_chip.snplist,
+    chip_outlier_root=chip_outlier_root
+  }
+
+  # FROM MERGED PLINK OUTLIER DATA, REMOVE CHIP VARIANTS AND SPLIT CHIP/LEGACY SAMPLES
+  call filter_imputed {
+    input:
+    docker=docker,
+    chip_snps=chip_outlier_root + ".bim",
+    chip_outliers_fam = chip_outlier_root + ".fam"
+  }
+
+  # ASSIGN ORIGIN TO LEGACY SAMPLES BASED ON PREVIOUS CHIP SAMPLES' ASSIGNMENT
+  call second_round_imputed {
+    input:
+    docker=docker,
+    chip_outliers_imputed=filter_imputed.chip_outliers_imputed,
+    legacy_outliers_imputed=filter_imputed.legacy_outliers_imputed,
+    chip_outliers_regions=first_round_chip.chip_origin
+  }
 }
 
 
@@ -49,7 +76,7 @@ task first_round_chip {
   }
   output {
     File chip_origin = "~{name}_merged_samples_most_likely_region.txt"
-    Array[File] chip_plots = glob("./plot/*pdf")
+    Array[File] chip_plots = glob("./plot/*.p*")
   }
 }
 
@@ -79,7 +106,7 @@ task second_round_imputed {
   }
   output {
     File chip_origin = "~{name}_merged_samples_most_likely_region.txt"
-    Array[File] chip_plots = glob("./plot/*pdf")
+    Array[File] chip_plots = glob("./plot/*.p*")
   }
 
 }
