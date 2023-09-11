@@ -5,7 +5,7 @@
     "pca_kinship.min_pheno" : "gs://thl-incoming-data/from_THL_registerteam/finngen_R12/phenotype_internal_1.0/data/finngen_R12_minimum_internal_1.0.txt.gz",
     "pca_kinship.sample_data": "gs://r12-data/pca/r12_tags.txt",
     "pca_kinship.chrom_file_list": "gs://r12-data/pca/r12_path_list.txt",
-    "pca_kinship.merge_plink.exclusion_list": "gs://r12-data/pca/r12_remove_genos_for_sandbox_update.fam",
+    #"pca_kinship.merge_plink.exclusion_list": "",
 
     #PANEL PATHS
     "pca_kinship.filter_tg.tg_root": "gs://thousand_genome/hgdp/HGDP-CHMI",
