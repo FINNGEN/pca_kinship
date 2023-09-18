@@ -6,8 +6,9 @@ workflow pca_kinship {
     Boolean test
     String docker
     File min_pheno
-    File sample_data 
-    Array[String] chrom_list =  ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22"]
+    File sample_data
+    File chrom_file_list
+        
   }
   call prune_panel {
     input:
@@ -15,11 +16,13 @@ workflow pca_kinship {
     prefix = prefix              
   }
   # create plink file base on pruned snplist
-  scatter (chrom in chrom_list){
+  Array[String] chrom_list = read_lines(chrom_file_list)
+  scatter (i in range(length(chrom_list))){
     call chrom_convert {
       input :
       docker = docker,
-      chrom = chrom,
+      chrom = i+1 ,
+      cFile = chrom_list[i],
       variants = prune_panel.snplist           
     }
   }
@@ -84,6 +87,9 @@ task pca {
     File sample_file
     File kin_file
     File metadata
+    File tg_pop
+
+    Int aberrant_lambda
     
     String prefix
     String docker
@@ -105,7 +111,9 @@ task pca {
     --tg-bed ~{tg_bed} \
     --kin ~{kin_file} \
     --sample-info ~{sample_file} \
+    --tg-pop ~{tg_pop} \
     --name ~{prefix} \
+    --aberrant-lambda ~{aberrant_lambda} \
     --meta ~{metadata} \
     -o ~{out_path} \
     --release |& tee ~{out_file}
@@ -210,8 +218,8 @@ task merge_plink {
 
   String? final_docker = if defined(merge_docker) then merge_docker else docker
   command <<<
-    cat ~{write_lines(bed_files)} | sed -e 's/.bed//g' > merge_list.txt
-    cat ~{fam_files[0]} | shuf | head -n 50000  > test_fam.txt 
+    cat ~{write_lines(bed_files)} | sed 's/\.[^.]*$//'  > merge_list.txt
+    cat ~{fam_files[0]} | shuf | head -n 50000  > test_fam.txt
     plink --merge-list merge_list.txt ~{pargs} --keep-allele-order --memory ~{plink_mem} --make-bed --out ~{name} ~{if defined(exclusion_list) then  " --remove " + exclusion_list else "" } ~{if test then " --keep test_fam.txt " else ""}
   >>>
   
@@ -237,9 +245,10 @@ task chrom_convert {
 
   input{
     String chrom
+    File cFile
     String pargs
     File variants
-    String chromPath
+
     
     Int mem
     Int cpu   
@@ -247,7 +256,7 @@ task chrom_convert {
     String? convert_docker
   }
  
-  File cFile = sub(chromPath,"CHROM",chrom)
+  
   File tabix = cFile + '.tbi'
   Int disk_size = ceil(size(cFile,"GB")) *4  + 20
   Int plink_mem = mem*1000 - 2000
@@ -362,7 +371,7 @@ task filter_tg {
   File tg_fam = tg_root + '.fam'
   File tg_bim = tg_root + '.bim'
   
-  Int disk_size =  ceil(size(tg_bed,'GB'))*4 + 11
+  Int disk_size =  ceil(size(tg_bed,'GB'))*4 + 10
   String out_root = prefix + "_1kg"
 
   String? final_docker = if defined(tg_docker) then tg_docker else docker
@@ -377,6 +386,7 @@ task filter_tg {
     docker: "~{final_docker}"
     cpu: "~{cpu}"
     disks: "local-disk ~{disk_size} HDD"
+    bootDiskSizeGb: 20
     zones: "europe-west1-b europe-west1-c europe-west1-d"
     memory: "~{mem} GB"
     preemptible: 0
