@@ -1,4 +1,4 @@
-from utils import np,mapcount,basic_iterator,return_header,write_fam_samplelist,make_sure_path_exists,tmp_bash,identify_separator,superpop_dict,merge_files
+from utils import np,mapcount,basic_iterator,return_header,write_fam_samplelist,make_sure_path_exists,tmp_bash,identify_separator,merge_files
 import pandas as pd
 import csv
 from scipy.spatial.distance import cdist
@@ -116,7 +116,7 @@ def aberrant_outliers(args,tg_pca_file):
         args.force = True
         iterations = ' 1000 -p' if args.test else ' 3000 '
         args.logging.info(f'generating outliers at {tg_pca_file}')
-        cmd  =f"""Rscript {os.path.join(args.parent_path,'scripts/pca_outlier_detection/scripts/classify_outliers.R')}  -f {tg_pca_file+".eigenvec"} -e {tg_pca_file+".eigenval"} -s {args.annot_pop} --n_iterations {iterations}  -o {tg_pca_file} """
+        cmd  =f"""Rscript {os.path.join(args.parent_path,'scripts/pca_outlier_detection/scripts/classify_outliers.R')}  -f {tg_pca_file+".eigenvec"} -e {tg_pca_file+".eigenval"} -s {args.annot_pop} --n_iterations {iterations}  -o {tg_pca_file} --lambda {args.aberrant_lambda}"""
         args.logging.debug(cmd)
         subprocess.call(shlex.split(cmd))
 
@@ -165,46 +165,42 @@ def build_superpop(args):
     
     # sample to super pop mapping file
     annot_pop =  os.path.join(args.misc_path, args.name + '_sample_annot.tsv')
-    if not os.path.os.path.isfile(annot_pop) or args.force or mapcount(annot_pop) < 2:
-        args.logging.info(f'generating super pop dict {annot_pop}')
+    args.logging.info(f'generating super pop dict {annot_pop}')
 
-        print(superpop_dict)
 
-        # sample info for tg
-        tg_pop = os.path.join(args.data_path,'20130606_sample_info.txt')
-           # get index of pop column and build sample to population dictionary
-        cols = [return_header(tg_pop).index(elem) for elem in ['Sample','Population']]
-        pop_dict = {sample:pop for sample,pop in basic_iterator(tg_pop,columns = cols)}
+    # sample info for tg
+    #g_pop = os.path.join(args.data_path,'20130606_sample_info.txt')
+    # get index of pop column and build sample to population dictionary
+    cols = [return_header(args.tg_pop).index(elem) for elem in ['Sample','Population']]
+    pop_dict = {sample:pop for sample,pop in basic_iterator(args.tg_pop,columns = cols)}
+    
+    # now i build a sample to pop dictionary where i keep superpop unless it's a Finn
+    with open(annot_pop,'wt') as o:
+        o.write('IID' +'\t' + 'SuperPops\n')
 
-        # now i build a sample to pop dictionary where i keep superpop unless it's a Finn
-        with open(annot_pop,'wt') as o:
-            o.write('IID' +'\t' + 'SuperPops\n')
+        # read in sample tags and assign "other" if missing
+        tag_dict = defaultdict(lambda:"Other")
+           
+        # loop through input tg fam file and update population data
+        for sample in basic_iterator(args.tg_bed.replace('.bed','.fam'),columns = 1):
+            tag_dict[sample] = pop_dict[sample]
 
-            # read in sample tags and assign "other" if missing
-            tag_dict = defaultdict(lambda:"Other")
-            
-            # loop through input tg fam file and update population data
-            for sample in basic_iterator(args.tg_bed.replace('.bed','.fam'),columns = 1):
-                pop = pop_dict[sample] # fetch country
-                # assign FIN else suerpop
-                tag_dict[sample] = pop if pop =='FIN'else superpop_dict[pop]
+        # read in sample data
+        for sample,tag in basic_iterator(args.sample_info,separator =identify_separator(args.sample_info)):
+            tag_dict[sample] = tag
 
-            # read in sample data
-            for sample,tag in basic_iterator(args.sample_info,separator =identify_separator(args.sample_info)):
-                tag_dict[sample] = tag
-
-            # now i loop through all samples fro merged plink file and assign to each id a tag
-            with open(args.merged_plink_file + '.id') as i:
-                for line in i:
-                    sample = line.strip().split()[0]
-                    o.write(sample+ '\t' + tag_dict[sample] + '\n')
-
+        # now i loop through all samples fro merged plink file and assign to each id a tag
+        with open(args.merged_plink_file + '.id') as i:
+            for line in i:
+                sample = line.strip().split()[0]
+                o.write(sample+ '\t' + tag_dict[sample] + '\n')
 
     # read in annotation for all samples
     with open(annot_pop) as i: tag_dict = {sample:pop for sample,pop in (line.strip().split() for line in i)}
-
-    
-    fg_tags = {tag_dict[sample] for sample in np.loadtxt(args.merged_plink_file + ".fg.samples",dtype=str)}
+    fg_samples = []
+    with open(args.merged_plink_file + ".fg.samples") as fam:
+        fg_samples.append(line.split(maxsplit=1)[0])
+    fg_tags = {tag_dict[sample] for sample in fg_samples}
     return annot_pop,fg_tags
 
 
@@ -222,7 +218,7 @@ def fin_eur_probs(args,eur_outlier_path,pc_filter,finn_prob_filter):
     fin_data = np.loadtxt(eur_outlier_path+ 'fin.eigenvec',dtype = float, skiprows = 1,usecols = range(1,pc_filter+1))      
     fin_avg = np.reshape(np.average(fin_data,axis = 0),(1,fin_data.shape[1]))
     fin_cov = np.linalg.inv(np.cov(fin_data.T))
-    # read in FINNGEN sample data
+    # read in FINNGEN sample data as ground truth
     finngen_data = np.loadtxt(eur_outlier_path+ 'finngen.eigenvec',dtype = float, skiprows = 1,usecols = range(1,pc_filter+1))
     # MAHALANOBIS DISTANCES
     eur_dist = cdist(finngen_data,eur_avg,metric = 'mahalanobis',VI = eur_cov).flatten()**2
@@ -231,9 +227,11 @@ def fin_eur_probs(args,eur_outlier_path,pc_filter,finn_prob_filter):
     p_eur =  1 - chi2.cdf(eur_dist,pc_filter)
     p_fin =  1 - chi2.cdf(fin_dist,pc_filter)
     f_prob = p_fin/(p_fin + p_eur)
+    # save data
     np.savetxt(args.misc_path + "eur.txt",p_eur)
     np.savetxt(args.misc_path + "fin.txt",p_fin)
     np.savetxt(args.misc_path + "prob.txt",f_prob)
+    # return outliers
     fin_mask = (f_prob < finn_prob_filter)
     print(f'outliers: {fin_mask.sum()}')
     eur_outliers = np.loadtxt(eur_outlier_path+ 'finngen.eigenvec',dtype = str, skiprows = 1,usecols = 0 )[fin_mask]

@@ -95,13 +95,14 @@ if __name__=='__main__':
     #SAMPLE DATA
     parser.add_argument("--sample-info", type=file_exists, help =  "Path to csv file with sample,batch", required = True)
     parser.add_argument("--meta", type=file_exists, help =  "Path to file with regionofbirth info", required = True)
-
+    parser.add_argument("--tg-pop", type=file_exists, help =  "Path to file with regionofbirth info")
 
     #KINSHIP
     parser.add_argument('--degree',type=int,help='Degree for Kinship',default = 2)
     parser.add_argument("--kin", type=file_exists, help = "File with king related individuals")
 
     # NUMERIC PARAMS
+    parser.add_argument('--aberrant-lambda',type=int,help='Lambda used by aberrant',default = 20)
     parser.add_argument('--pca-components',type=int,help='Components needed for pca',default = 20)
     parser.add_argument('--pc-filter',type = int,help = 'Number of pcs on which to perform the outlier detection method',default = 3)
     parser.add_argument('--finn-prob-filter',type = float,help = 'Filter falue to decide whether a finngen sample is part of the EUR or FIN centroid',default = 0.95)
@@ -117,7 +118,7 @@ if __name__=='__main__':
     parser.add_argument('--test',action = "store_true",help = 'Flag for quick pca_outlier method without plots.')
     parser.add_argument("--cpus",type = int, help = "Number of cpus to use (default available cpus)", default =  multiprocessing.cpu_count())
     parser.add_argument('--release',action = 'store_true',help = 'Flag for data release',default = False)
-
+    parser.add_argument("--extract", type=file_exists, help =  "Snps to include")
 
 
     args = parser.parse_args()    
@@ -132,7 +133,6 @@ if __name__=='__main__':
     args.misc_path =  os.path.join(args.out_path, 'misc/')
     make_sure_path_exists([args.out_path,args.misc_path,args.data_path])
     args.sample_fam = args.bed.replace('.bed','.fam')
-
     args.success = False
     success = main(args)
     

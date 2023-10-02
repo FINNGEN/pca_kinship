@@ -37,7 +37,9 @@ def read_in_tags(fam_file,tags):
 
 
 def merge_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract=None,force=False):
-
+    """
+    Here we merge two datasets and run PCA the merged set.
+    """
     # i defined the merged file only using input files names, so i don't regenerate them everytime.
     plink_root = os.path.join(os.path.dirname(os.path.dirname(pca_root)),'plink')
     make_sure_path_exists(plink_root)
@@ -87,18 +89,20 @@ def merge_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract=None,force=False):
     return ref_score,proj_score
 
 def run_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract = None):
-
+    """
+    Here we calculate the PC on the ref set and project the other group onto it.
+    """
     eigenvec = pca_root + '.eigenvec.var'
     print(eigenvec)
     if not os.path.isfile(eigenvec):
-        approx = "--approx" if mapcount(ref_bed.replace('.bed','.fam')) > 5000 else ""
+        approx = "approx" if mapcount(ref_bed.replace('.bed','.fam')) > 5000 else ""
         extract = f" --extract {extract} " if extract else "" 
-        cmd = f"{plink_cmd} --bfile {basename(ref_bed)} {extract}  --pca 3 {approx} biallelic-var-wts -out {pca_root}"
+        cmd = f"{plink_cmd} --bfile {basename(ref_bed)} {extract}  --pca 3  biallelic-var-wts -out {pca_root}"
         subprocess.call(shlex.split(cmd))
     else:
         print('PCA already calculated')
   
-    proj_cmd = f"plink2 --score {eigenvec}  2 3 header-read  no-mean-imputation   --score-col-nums 5-14  "
+    proj_cmd = f"plink2 --score {eigenvec}  2 3 header-read  no-mean-imputation   --score-col-nums 5-7  "
     #FREQ FILES
     for bed_file in [ref_bed,proj_bed]:
         bed_root=basename(bed_file)
@@ -123,7 +127,7 @@ def run_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract = None):
     return ref_score,proj_score
 
 
-def plot_projection(ref_scores,proj_scores,plot_root,tag_dict):
+def plot_projection(ref_scores,proj_scores,plot_root,tag_dict,top_regions):
 
     # read in data
     plot_data = plot_root + '_proj.csv'
@@ -152,8 +156,12 @@ def plot_projection(ref_scores,proj_scores,plot_root,tag_dict):
     df.update(tag_df)
     tags = list(set(df.TAG))
     count = dict(df.TAG.value_counts())
+    print(count)
+    
+    # use all tags if low enough else keep only relevant ones
     tags = [tag for tag in tags if count[tag] > 10]
-
+    tags = tags if len(tags) <= 10 else ["proj"] + top_regions
+    
     tag_scatter = plot_root + '_scatter_tags.pdf'
     tag_density = plot_root + '_scatter_tags-density.pdf'
     
@@ -278,11 +286,11 @@ def calculate_probs(proj_scores,ref_scores,tag_dict,out_root):
 
 
     hit_regions = df_prob.idxmax(axis=1)
-    for elem in Counter(hit_regions).most_common(): print(elem)   
+    top_regions = [elem for elem  in Counter(hit_regions).most_common()]
     with open(out_root + "_samples_most_likely_region.txt",'wt') as o:
         for entry in zip(samples,hit_regions):
             o.write('\t'.join(map(str,entry)) + '\n')
-    return
+    return top_regions
 
 
 
@@ -305,13 +313,14 @@ def main(args):
     plot_path = os.path.join(args.out_path,'plot')
     plot_root = os.path.join(plot_path,args.name)
 
+    top_regions = calculate_probs(proj_scores,ref_scores,tag_dict,os.path.join(args.out_path,args.name))
     if args.plot:
         pretty_print("PLOT PROJECTION")
         make_sure_path_exists(plot_path)
-        df = plot_projection(ref_scores,proj_scores,plot_root,tag_dict)
+        df = plot_projection(ref_scores,proj_scores,plot_root,tag_dict,list(list(zip(*top_regions))[0]))
 
     pretty_print("TAG PROJECTIONS")
-    calculate_probs(proj_scores,ref_scores,tag_dict,os.path.join(args.out_path,args.name))
+    print(top_regions)
     return
 
 

@@ -248,34 +248,40 @@ def return_outliers_df(args):
         #import metadata about samples
         outlier_info = tg_pca_file + '_outlier_samples.tsv'
         samples = np.loadtxt(args.sample_fam,usecols = 1,dtype = str)
-        superpops = set(np.loadtxt(args.data_path + 'superpop.csv',dtype = str,delimiter =',',usecols = 1))
         # read pc data
         pc_data = pd.read_csv(eigenvec_path,sep = '\t',usecols = ['IID',"PC1",'PC2','PC3'], dtype = {pc: np.float64 for pc in ["PC1",'PC2','PC3']})
         # set finngen samples as "FINNGEN"
         outlier_data = pd.read_csv(outlier_info,dtype = str,sep = '\t',usecols = ['IID',"outlier",'SuperPops']).rename(columns ={"SuperPops":"TAG"})
-
+        
         outlier_data.loc[((outlier_data['IID'].isin(samples)) & (outlier_data["outlier"] == "TRUE")),"TAG"] = "FINNGEN_OUTLIER"
         outlier_data.loc[((outlier_data['IID'].isin(samples)) & (outlier_data["outlier"] == "FALSE")),"TAG"] = "FINNGEN_INLIER"
         print(outlier_data.head())
-        pc_data = pc_data.merge(outlier_data,on = "IID")
+        pc_data = pc_data.merge(outlier_data,on = "IID").set_index("IID")
+        pc_data.to_csv(out_file)
         print(pc_data.head())
 
-        pc_data.to_csv(out_file,index=False)
-    else:
-        pc_data = pd.read_csv(out_file)
 
-    print(pc_data.dtypes)
+    pc_data = pd.read_csv(out_file,index_col =0)
+    print(pc_data)
+    #UPDATE TAGS SO I CAN REPLOT WITHOUT RECALCULATING OUTLIERS
+    with open(args.annot_pop) as i: tag_dict = {sample:pop for sample,pop in (line.strip().split() for line in i)}    
+    for index,sample in pc_data.iterrows():
+        if sample.TAG not in ["FINNGEN_OUTLIER","FINNGEN_INLIER"]:
+            pc_data.at[index,"TAG"] = tag_dict[index]
+
     tags = set(pc_data.TAG)
+    print(tags)
     tag_size = [len(pc_data[pc_data.TAG == tag]) for tag in tags]
-    
     # plot them by size!
     final_tags = [tag for _,tag in sorted(zip(tag_size,tags),reverse = True)]
     color_maps = list(color_dict[len(tags)]['qualitative'].keys())
     cm = 'Set1' if 'Set1' in color_maps else color_maps[0] 
     colors= color_dict[len(tags)]['qualitative'][cm]
-    [red,blue,green,purple,orange,yellow,brown,pink] = colors
-    color_map = {'FIN':purple,'FINNGEN_INLIER':red,'FINNGEN_OUTLIER':green,'EUR':blue,'AFR':pink,'EAS':yellow,'SAS':brown,'AMR':orange}
-    #color_map ={final_tags[i]:color for i,color in enumerate(colors)}
+
+    #[red,blue,green,purple,orange,yellow,brown,pink] = colors   
+    #color_map = {'FIN':purple,'FINNGEN_INLIER':red,'FINNGEN_OUTLIER':green,'EUR':blue,'AFR':pink,'EAS':yellow,'SAS':brown,'AMR':orange}
+    
+    color_map ={final_tags[i]:color for i,color in enumerate(colors)}
 
     print(color_map)
     return final_tags,pc_data,color_map
@@ -289,11 +295,14 @@ def plot_first_round_outliers(args):
     ethnic_plot = os.path.join(args.plot_path,args.name +'_ethnic_outliers.pdf')
     ethnic_2d = os.path.join(args.plot_path,args.name +'_ethnic_outliers_pairwise.pdf')
 
-    # create data
+
+    size_map = {"STRANGE_FIN":10}
+    alpha_map = {"STRANGE_FIN":1}
+    # createdata
     if not os.path.isfile(ethnic_plot) or not os.path.isfile(ethnic_2d):
         tags,pc_data,color_map = return_outliers_df(args)
 
-
+    
     #plot 3d
     if not os.path.isfile(ethnic_plot):
         #build super pop dict for plotting
@@ -304,7 +313,7 @@ def plot_first_round_outliers(args):
         #args.v_print(3,'ethnic outliers 3d plot already done.')
 
     if not os.path.isfile(ethnic_2d):
-        plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map)
+        plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map,size_map=size_map,alpha_map=alpha_map)
     else:
         pass
         #args.v_print(3,'ethnic outliers pairwise plot already done.')

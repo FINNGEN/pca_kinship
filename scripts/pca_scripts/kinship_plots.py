@@ -22,15 +22,20 @@ for i,key in enumerate(inf_types):inf_dict[key] = i
 
 def read_batch_data(args):
 
-    sample_batch_dict,tag_dict = {},{}
+    # here i read in the sample dict
+    tag_dict = dd(lambda :"Other")
     with open(args.sample_info)as i:
         for line in i:
             sample,tag = line.strip().split()
             tag_dict[sample] = tag
+  
+    # assign tag to all samples in fam file
+    sample_batch_dict = dd(lambda :"Other")
+    with open(args.kinship_bed.replace('bed','fam')) as fam:
+        for line in fam:
+            sample = line.split(maxsplit=1)[0]
+            sample_batch_dict[sample] = tag_dict[sample]
 
-    samples = np.loadtxt(args.kinship_bed.replace('bed','fam'),dtype=str,usecols =0)
-    for sample in samples:
-        sample_batch_dict[sample] = tag_dict[sample]
     
     return sample_batch_dict
 
@@ -230,9 +235,11 @@ def plot_batch_data(args):
         return
     
     sample_batch_dict = read_batch_data(args)
-    batches = natsort.natsorted(set(sample_batch_dict.values()))
-
+    counter = Counter(sample_batch_dict.values())
+    batches = natsort.natsorted([elem for elem in counter if counter[elem] > 10])
+    print(batches)
     plot_data = os.path.join(args.misc_path, args.prefix +'_batches_degree.npy')
+
     if not os.path.isfile(plot_data):
         G = read_network(args)
         print(batches)
@@ -264,7 +271,6 @@ def plot_batch_data(args):
         x,y,s = elem
         batch = batches[i]
         ax.scatter(x,y,s/1000,label = batch)
-
 
     # RANDOM GRAPH
     print(max_avg_deg)
