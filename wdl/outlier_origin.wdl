@@ -6,8 +6,8 @@ workflow outlier_origin {
     String docker
     String chip_outlier_root
     String panel_root
+    Boolean plot
   }
-
   # PRUNING OF CHIP OUTLIER DATA
   call prune_chip {
     input :
@@ -25,6 +25,7 @@ workflow outlier_origin {
     reference_plink = panel_plink,
     candidate_plink = chip_plink,
     name= "first_round_chip",
+    plot=plot,
     snps = prune_chip.snplist
   }
 
@@ -43,6 +44,7 @@ workflow outlier_origin {
     reference_plink = filter_imputed.chip_outliers_imputed,
     candidate_plink = filter_imputed.legacy_outliers_imputed,
     reference_regions=first_round_chip.chip_origin,
+    plot = plot,
     name= "second_round_imputed"
   }
 }
@@ -55,11 +57,12 @@ task assign_origins {
     File reference_regions
     File? snps
     String name
+    Boolean plot
   }
   Int disk_size = (ceil(size(reference_plink,'GB')) + ceil(size(candidate_plink,'GB')))
   
   command <<<
-  python3.7 /scripts/project_ethnic.py --ref-bed ~{reference_plink[0]} --proj-bed ~{candidate_plink[0]} --sample-info ~{reference_regions} -o . --name ~{name} --plot --merge ~{if defined(snps) then "--extract " + snps else ""}
+  python3.7 /scripts/project_ethnic.py --ref-bed ~{reference_plink[0]} --proj-bed ~{candidate_plink[0]} --sample-info ~{reference_regions} -o . --name ~{name}  --merge ~{if defined(snps) then "--extract " + snps else ""} ~{if (plot) then "--plot" else ""}
 
   >>>
   runtime {
@@ -71,7 +74,7 @@ task assign_origins {
   }
   output {
     File chip_origin = "~{name}_merged_samples_most_likely_region.txt"
-    Array[File] chip_plots = glob("./plot/*.p*")
+    Array[File] chip_plots = glob("./plot/*")
   }
   
 }

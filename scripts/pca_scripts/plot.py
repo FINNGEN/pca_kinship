@@ -3,6 +3,7 @@ from collections import defaultdict as dd
 import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
+from matplotlib import gridspec
 import seaborn as sns
 sns.set(palette='Set2')
 import matplotlib.ticker as ticker
@@ -14,7 +15,6 @@ from pca_scripts.color_dict import color_dict
 from utils import make_sure_path_exists,identify_separator,mapcount,tmp_bash
 from collections import Counter
 import scipy.stats as st
-
 
 ##########################
 #--- PLOTTING PCA MAP ---#
@@ -120,7 +120,6 @@ def plot_pca_map(df,args):
         print(pc)
         ax = fig.add_subplot(gs[0,pc-1],projection=stamen_terrain.crs)
         axes.append(ax)
-        ax.add_image(stamen_terrain, 8, zorder = 0)
         ax.set_extent([lon1,lon2,lat1,lat2], crs=crs.PlateCarree())
 
         transform = crs.PlateCarree()._as_mpl_transform(ax)
@@ -310,13 +309,11 @@ def plot_first_round_outliers(args):
 
     else:
         pass
-        #args.v_print(3,'ethnic outliers 3d plot already done.')
 
     if not os.path.isfile(ethnic_2d):
         plot_2d(pc_data,ethnic_2d,tags,tag_column="TAG",color_map=color_map,size_map=size_map,alpha_map=alpha_map)
     else:
         pass
-        #args.v_print(3,'ethnic outliers pairwise plot already done.')
 
 
 
@@ -580,7 +577,7 @@ def trim_axis(ax):
 
 
 
-def plot_2d_density(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],color_map=None,tag_column="TAG",max_size = 3000,max_map=None,pc_tags=None,axis_legend =2,legend_location = "lower left",legend_fontsize=6,linewidths=None,levels = 3):
+def plot_2d_density(pc_data,out_file,tags,pcs,color_map=None,tag_column="TAG",max_size = 3000,max_map=None,pc_tags=None,axis_legend =2,legend_location = "lower left",legend_fontsize=6,linewidths=None,levels = 3):
 
 
     fig = plt.figure()
@@ -668,3 +665,75 @@ def plot_2d_density(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],color
     fig.savefig(out_file.replace('.pdf','.png'),dpi=300)
     plt.close()
     
+
+def pc_marginal(pc_data,bin_func,out_file,tags,pcs,color_map =None,alpha_map = None,size_map = None,max_map=None,max_size = 3000,tag_column = "TAG"):
+
+    fig = plt.figure()
+
+    # init tag sizes
+    sizes = dd(lambda :.5)
+    if size_map:
+        for key in size_map:sizes[key] = size_map[key]
+    alphas = dd(lambda:0.2)
+    if alpha_map:
+        for key in alpha_map:alphas[key] = alpha_map[key]
+    max_sizes = dd(lambda:max_size)
+    if max_map:
+        for key in max_map: max_sizes[key] = max_map[key]
+
+    if not color_map:
+        color_maps = list(color_dict[len(tags)]['qualitative'].keys())
+        cm = 'Set1' if 'Set1' in color_maps else color_maps[0]
+        color_map = {tag:color_dict[len(tags)]['qualitative'][cm][i] for i,tag in enumerate(tags)}
+
+        
+    gs = gridspec.GridSpec(2, 2, width_ratios=[1,3], height_ratios=[3,1])
+    ax = plt.subplot(gs[0,1])
+    axl = plt.subplot(gs[0,0], sharey=ax)
+    axb = plt.subplot(gs[1,1], sharex=ax)
+    for i,tag in enumerate(tags):
+        tag_data = pc_data[pc_data[tag_column] == tag]
+        max_data = max_sizes[tag]
+        n = min(max_data,len(tag_data))
+        tag_data = tag_data.sample(n=n)
+        color = color_map[tag]
+        size = sizes[tag]
+        alpha = alphas[tag]
+        print(tag,len(tag_data),alpha,size,n)
+        plot_x,plot_y = tag_data[pcs[0]],tag_data[pcs[1]]
+        ax.scatter(plot_x,plot_y, s= size,alpha = alpha,color = color,label = tag)
+        bins = int(len(tag_data)/20)
+        bin_data,plot_data = bin_func(tag_data[pcs[1]],bins)
+        axl.plot(plot_data,bin_data,color=color)
+        bin_data,plot_data = bin_func(tag_data[pcs[0]],bins)
+        axb.plot(bin_data,plot_data,color=color)
+
+    ax.tick_params(labelbottom=False)
+    ax.tick_params(labelleft=False)
+
+    ax.set_xlabel(pcs[1])
+    ax.set_ylabel(pcs[0])
+    
+    print(out_file)
+    fig.savefig(out_file)
+    fig.savefig(out_file.replace('.pdf','.png'),dpi=300)
+    
+    return
+    
+def plot_2d_marginal(pc_data,bin_func,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = None,color_map= None,alpha_map = None,size_map = None,legend_fontsize = 6,label_fontsize = 5,tag_column = "TAG",max_size = 3000,max_map = None,axis_legend =2,legend_location = "lower left",rescale = 4):
+    '''
+     Inputs:
+    -- pc_file : name of file where to fetch data
+    -- out_file : name of figure for saving
+    -- tag_column : columns of the dataframe to plot
+    -- tags: list of tags to plot in tag_column
+    -- pc_columns : name of the columns in the file
+    -- pc_tags : name of the pcs to plt
+    -- colors_map : annotation to color_dict
+    '''
+
+    
+    for i,pcs in enumerate(list(combinations(pc_columns,2)) ):
+        pc_out = out_file.replace('.pdf',f'.{"_".join(pcs)}.pdf')
+        pc_marginal(pc_data,bin_func,pc_out,tags,pcs)
+        

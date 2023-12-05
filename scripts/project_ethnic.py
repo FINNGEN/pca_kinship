@@ -6,7 +6,7 @@ from collections import defaultdict
 from scipy.stats import chi2
 from scipy.spatial.distance import cdist
 from utils import file_exists,make_sure_path_exists,pretty_print,basename,mapcount,progressBar
-from pca_scripts.plot import plot_2d_density,plot_2d,trim_axis
+from pca_scripts.plot import plot_2d_density,plot_2d,trim_axis,plot_2d_marginal
 from pca_scripts.color_dict import color_dict
 from verkko.binner import binner
 
@@ -151,6 +151,8 @@ def plot_projection(ref_scores,proj_scores,plot_root,tag_dict,top_regions):
     #plot_2d_density(df,density_fig,tags=tags,color_map=color_map,max_size=20000)
 
 
+
+    #### TAG/POP STUFF ####
     tag_df = pd.DataFrame(tag_dict.items(),columns=["IID","TAG"]).set_index("IID")
     df = pd.read_csv(plot_data,index_col=0)
     df.update(tag_df)
@@ -168,9 +170,12 @@ def plot_projection(ref_scores,proj_scores,plot_root,tag_dict,top_regions):
     plot_2d(df,tag_scatter,tags=tags,max_size = 20000)
     lw= {elem:.3 for elem in tags}
     lw["proj"] = 1
-    #plot_2d_density(df,tag_density,tags=tags,max_size=np.inf,linewidths=lw,levels = 2)
-    plot_tags(df,plot_root,tags)
 
+    plot_2d_marginal(df,return_bin_data,scatter_fig,tags=tags,color_map=color_map,max_size = 20000,alpha_map={"core":.1,'proj':.3})
+    plot_tags(df,plot_root,tags)
+    #plot_2d_density(df,tag_density,tags=tags,max_size=np.inf,linewidths=lw,levels = 2)
+    
+    
 
 def return_bin_data(data,n_bins =40):
     xmin,xmax = data.to_numpy().min(),data.to_numpy().max()
