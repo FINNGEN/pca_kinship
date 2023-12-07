@@ -15,6 +15,7 @@ from pca_scripts.color_dict import color_dict
 from utils import make_sure_path_exists,identify_separator,mapcount,tmp_bash
 from collections import Counter
 import scipy.stats as st
+import matplotlib.patches as mpatches
 
 ##########################
 #--- PLOTTING PCA MAP ---#
@@ -544,6 +545,7 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
         trim_axis(ax)
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
+
         for tick in ax.xaxis.get_major_ticks():
             tick.label.set_fontsize(6)
         for tick in ax.yaxis.get_major_ticks():
@@ -603,7 +605,6 @@ def plot_2d_density(pc_data,out_file,tags,pcs,color_map=None,tag_column="TAG",ma
     if max_map:
         for key in max_map: max_sizes[key] = max_map[key]
 
-    import matplotlib.patches as mpatches
 
     handles = []
     for i,tag in enumerate(tags):
@@ -666,7 +667,7 @@ def plot_2d_density(pc_data,out_file,tags,pcs,color_map=None,tag_column="TAG",ma
     plt.close()
     
 
-def pc_marginal(pc_data,bin_func,out_file,tags,pcs,color_map =None,alpha_map = None,size_map = None,max_map=None,max_size = 3000,tag_column = "TAG"):
+def pc_marginal(pc_data,bin_func,out_file,tags,pcs,color_map =None,alpha_map = None,size_map = None,max_map=None,max_size = 3000,tag_column = "TAG",legend_fontsize=7):
 
     fig = plt.figure()
 
@@ -691,6 +692,7 @@ def pc_marginal(pc_data,bin_func,out_file,tags,pcs,color_map =None,alpha_map = N
     ax = plt.subplot(gs[0,1])
     axl = plt.subplot(gs[0,0], sharey=ax)
     axb = plt.subplot(gs[1,1], sharex=ax)
+    handles = []
     for i,tag in enumerate(tags):
         tag_data = pc_data[pc_data[tag_column] == tag]
         max_data = max_sizes[tag]
@@ -700,6 +702,7 @@ def pc_marginal(pc_data,bin_func,out_file,tags,pcs,color_map =None,alpha_map = N
         size = sizes[tag]
         alpha = alphas[tag]
         print(tag,len(tag_data),alpha,size,n)
+        handles.append(mpatches.Patch(color=color, label=tag))
         plot_x,plot_y = tag_data[pcs[0]],tag_data[pcs[1]]
         ax.scatter(plot_x,plot_y, s= size,alpha = alpha,color = color,label = tag)
         bins = int(len(tag_data)/20)
@@ -710,9 +713,18 @@ def pc_marginal(pc_data,bin_func,out_file,tags,pcs,color_map =None,alpha_map = N
 
     ax.tick_params(labelbottom=False)
     ax.tick_params(labelleft=False)
-
     ax.set_xlabel(pcs[1])
     ax.set_ylabel(pcs[0])
+    ax.legend(loc='upper center', handles=handles,fancybox = True,prop={'size': legend_fontsize},bbox_to_anchor=(1.1, 1.05))
+
+    suplim=max(np.abs(axb.get_xlim()))
+    axb.xaxis.set_ticks(np.linspace(-suplim,suplim,5))
+    axb.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
+
+    suplim=max(np.abs(axl.get_ylim()))
+    axl.yaxis.set_ticks(np.linspace(-suplim,suplim,5))
+    axl.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
+
     
     print(out_file)
     fig.savefig(out_file)
@@ -735,5 +747,5 @@ def plot_2d_marginal(pc_data,bin_func,out_file,tags,pc_columns = ['PC1','PC2','P
     
     for i,pcs in enumerate(list(combinations(pc_columns,2)) ):
         pc_out = out_file.replace('.pdf',f'.{"_".join(pcs)}.pdf')
-        pc_marginal(pc_data,bin_func,pc_out,tags,pcs)
+        pc_marginal(pc_data,bin_func,pc_out,tags,pcs,legend_fontsize=legend_fontsize)
         

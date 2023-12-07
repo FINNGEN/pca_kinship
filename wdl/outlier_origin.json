@@ -1,11 +1,11 @@
 {
-    "outlier_origin.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:outliers",
+    "outlier_origin.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.ethnic.1",
     "outlier_origin.chip_outlier_root":"gs://r12-data/ethnic/plink/r12-ethnic-chip",
     "outlier_origin.panel_root": "gs://r12-data/ethnic/plink/panel/HGDP-chip-meta",
 
     # FIRST ROUND & PLOTTING
-    "outlier_origin.plot": False,
-    "outlier_origin.first_round_chip.reference_regions": "gs://thousand_genome/hgdp/gnomad_meta_subpop_pca.txt",
+    "outlier_origin.pop_type": "pop", #pop or subpop
+    "outlier_origin.reference_map": {"pop":"gs://thousand_genome/hgdp/gnomad_meta_pop_pca.txt","subpop":"gs://thousand_genome/hgdp/gnomad_meta_subpop_pca.txt"},
 
     # PRUNE
     "outlier_origin.prune_chip.target": 50000,

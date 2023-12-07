@@ -1,6 +1,6 @@
 {
     #WORKLOW INPUTS
-    "pca_kinship.test": False,
+    "pca_kinship.test": True,
     "pca_kinship.prefix": "finngen_R12",
     "pca_kinship.min_pheno" : "gs://thl-incoming-data/from_THL_registerteam/finngen_R12/phenotype_internal_1.0/data/finngen_R12_minimum_internal_1.0.txt.gz",
     "pca_kinship.sample_data": "gs://r12-data/pca/inputs/r12_tags.txt",
@@ -46,9 +46,9 @@
     "pca_kinship.filter_tg.mem":8,
     
     #DOCKERS
-    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.3",
+    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.ethnic",
     #"pca_kinship.kinship.kinship_docker":"eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.2",
-    "pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.pca.1",
+    #"pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.pca.1",
     #"pca_kinship.prune_panel.prune_docker": "String? (optional)",
     #"pca_kinship.merge_plink.merge_docker": "String? (optional)",
     #"pca_kinship.filter_tg.tg_docker": "String? (optional)",

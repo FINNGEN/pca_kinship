@@ -223,9 +223,9 @@ def plot_tags(df,plot_root,tags):
         ax.set_ylim(0,max(max(y_max),max(plot_data)))
         
         trim_axis(ax)
-        for tick in ax.xaxis.get_major_ticks():tick.label.set_fontsize(6)
-        for tick in ax.yaxis.get_major_ticks():tick.label.set_fontsize(6)
-
+        for tick in ax.xaxis.get_major_ticks():tick.label1.set_fontsize(6)
+        for tick in ax.yaxis.get_major_ticks():tick.label1.set_fontsize(6)
+        
     handles,labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     leg = ax.legend(by_label.values(),by_label.keys(),loc="lower left", numpoints=1, fancybox = True,prop={'size':4})

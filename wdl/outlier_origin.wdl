@@ -6,7 +6,8 @@ workflow outlier_origin {
     String docker
     String chip_outlier_root
     String panel_root
-    Boolean plot
+    String pop_type
+    Map[String,File] reference_map
   }
   # PRUNING OF CHIP OUTLIER DATA
   call prune_chip {
@@ -14,7 +15,7 @@ workflow outlier_origin {
     docker=docker,
     plink_path = chip_outlier_root,
   }
-
+  Boolean plot = if pop_type == "pop" then true else false
   # ASSIGN POP/SUBPOP TO CHIP OUTLIERS
   Array[File] chip_plink = [chip_outlier_root + ".bed",chip_outlier_root + ".fam",chip_outlier_root + ".bim"]
   Array[File] panel_plink = [panel_root + ".bed",panel_root + ".fam",panel_root + ".bim"]
@@ -26,6 +27,7 @@ workflow outlier_origin {
     candidate_plink = chip_plink,
     name= "first_round_chip",
     plot=plot,
+    reference_regions = reference_map[pop_type],
     snps = prune_chip.snplist
   }
 
@@ -62,7 +64,7 @@ task assign_origins {
   Int disk_size = (ceil(size(reference_plink,'GB')) + ceil(size(candidate_plink,'GB')))
   
   command <<<
-  python3.7 /scripts/project_ethnic.py --ref-bed ~{reference_plink[0]} --proj-bed ~{candidate_plink[0]} --sample-info ~{reference_regions} -o . --name ~{name}  --merge ~{if defined(snps) then "--extract " + snps else ""} ~{if (plot) then "--plot" else ""}
+  python3 /scripts/project_ethnic.py --ref-bed ~{reference_plink[0]} --proj-bed ~{candidate_plink[0]} --sample-info ~{reference_regions} -o . --name ~{name}  --merge ~{if defined(snps) then "--extract " + snps else ""} ~{if (plot) then "--plot" else ""}
 
   >>>
   runtime {
