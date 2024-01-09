@@ -237,7 +237,7 @@ def plot_tags(df,plot_root,tags):
     return
                 
 
-def generate_tag_data(tag_dict,ref_scores,pca_root):
+def generate_tag_data(tag_dict,ref_scores):
     """
     Here i generate the probs for all tags.
     """
@@ -262,7 +262,7 @@ def generate_tag_data(tag_dict,ref_scores,pca_root):
     return summary
 
 
-def calculate_probs(proj_scores,ref_scores,tag_dict,out_root):
+def calculate_probs(proj_scores,ref_scores,tag_dict,out_root,cutoffs):
 
     # read in pc data
     proj_data = pd.read_csv(proj_scores,usecols=['IID','PC1_AVG','PC2_AVG','PC3_AVG'],index_col = 0,sep='\t')
@@ -275,29 +275,44 @@ def calculate_probs(proj_scores,ref_scores,tag_dict,out_root):
         
     print(f"Calculating tag avg/cov...")
     # calculate average and covariance for each core group
-    tag_avg_cov = generate_tag_data(tag_dict,ref_scores,out_root)
+    tag_avg_cov = generate_tag_data(tag_dict,ref_scores)
     for tag in tag_avg_cov:
         print(tag)
         avg,cov = tag_avg_cov[tag]
         tag_dist = cdist(proj_data,avg,metric = 'mahalanobis',VI = cov).flatten()**2
         tag_prob = 1 - chi2.cdf(tag_dist,3)
         df_prob[tag] = tag_prob
-    
-   # df_prob.to_csv(out_probs)
 
-    #df_prob = pd.read_csv(out_probs,index_col=0)
     if "NA" in df_prob: df_prob = df_prob.drop(["NA"],axis=1)
     print(df_prob)
 
+    df_prob.to_csv(out_root + '_probs.txt')
 
-    hit_regions = df_prob.idxmax(axis=1)
+    # top region
+    hit_regions = df_prob.idxmax(axis=1) # get column of max value
     top_regions = [elem for elem  in Counter(hit_regions).most_common()]
-    with open(out_root + "_samples_most_likely_region.txt",'wt') as o:
+
+    region_root = out_root + "_samples_most_likely_region.txt"
+    with open(region_root,'wt') as o:
         for entry in zip(samples,hit_regions):
             o.write('\t'.join(map(str,entry)) + '\n')
+
+
+    # now i filter the df for all cutoff values
+    for cutoff in sorted(cutoffs):
+        with open(region_root.replace(".txt",f"_{cutoff}.txt"),'wt') as o:
+            df_prob[df_prob<cutoff] = 0 #set values under threshold to 0
+            # zip together index,max val and region of max val
+            for entry in zip(df_prob.index,df_prob.max(axis=1),df_prob.idxmax(axis=1)): 
+                sample,value,region = entry
+                # if value is non 0 it means it's above threshold
+                region = region if float(value) else "NA"
+                o.write('\t'.join([sample,region]) + '\n')   
+    
     return top_regions
 
 
+    
 
 def main(args):
     pretty_print("TAG DICT")
@@ -318,7 +333,7 @@ def main(args):
     plot_path = os.path.join(args.out_path,'plot')
     plot_root = os.path.join(plot_path,args.name)
 
-    top_regions = calculate_probs(proj_scores,ref_scores,tag_dict,os.path.join(args.out_path,args.name))
+    top_regions = calculate_probs(proj_scores,ref_scores,tag_dict,os.path.join(args.out_path,args.name),args.cutoffs)
     if args.plot:
         pretty_print("PLOT PROJECTION")
         make_sure_path_exists(plot_path)
@@ -344,7 +359,8 @@ if __name__=='__main__':
     parser.add_argument("--sample-info", type=file_exists, help =  "Tsv file with sample data, used for grouping.", required = True)
     parser.add_argument('--plot',action = 'store_true',help = 'Plotting',default = False)
     parser.add_argument('--force',action = 'store_true',help = 'Recompute PCA',default = False)
-    
+    parser.add_argument( '--cutoffs', nargs='+', type = str, default=[0.8,0.9,0.99])
+
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--proj', action='store_true')
     group.add_argument('--merge', action='store_true')
@@ -352,7 +368,9 @@ if __name__=='__main__':
     parser.add_argument("--pargs", type=str,help ="Plink pca args",default = " --geno --maf")
     parser.add_argument("--extract", type=file_exists, help =  "Snps to use.", required = False)
     args = parser.parse_args()
+
     make_sure_path_exists(args.out_path)
     name_tag = "_merged" if args.merge else "_proj"
     args.name += name_tag
+
     main(args)

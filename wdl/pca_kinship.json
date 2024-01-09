@@ -46,10 +46,10 @@
     "pca_kinship.filter_tg.mem":8,
     
     #DOCKERS
-    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.ethnic",
-    #"pca_kinship.kinship.kinship_docker":"eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.2",
+    "pca_kinship.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.ethnic.1",
+    #"pca_kinship.kinship.kinship_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.ethnic.1",
     #"pca_kinship.pca.pca_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.HGDP.pca.1",
-    #"pca_kinship.prune_panel.prune_docker": "String? (optional)",
+    "pca_kinship.prune_panel.prune_docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.ethnic",
     #"pca_kinship.merge_plink.merge_docker": "String? (optional)",
     #"pca_kinship.filter_tg.tg_docker": "String? (optional)",
     #"pca_kinship.chrom_convert.convert_docker": "String? (optional)",
