@@ -77,11 +77,8 @@ Here's the summary of all relevant data:
 
 | File |  Description  |
 |---|---|
-| [PREFIX]_ehtnic_outliers.pdf | 3d visualization of the outlier detection PCA |
 | [PREFIX]_ehtnic_outliers_pairwise.pdf | Pairwise (2D) visualization of the outlier detection PCA |
-| [PREFIX]_eur_outliers.pdf | 3D visualization of the EUR/FIN PCA|
 | [PREFIX]_eur_outliers_pairwise.pdf |Pairwise (2D) visualization of the EUR/FIN PCA |
-| [PREFIX]_final_pca.pdf | 3D visualization of the final PCA|
 | [PREFIX]_final_pca_parwise.pdf |Pairwise (2D) visualization of the final PCA|
 | [PREFIX]_cohorts.pdf | Violin plots for top 3 PCs for each cohort|
 | [PREFIX]_pc_map.pdf| Geographic visualization of PC averages|

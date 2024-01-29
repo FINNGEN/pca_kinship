@@ -6,7 +6,7 @@ from collections import defaultdict
 from scipy.stats import chi2
 from scipy.spatial.distance import cdist
 from utils import file_exists,make_sure_path_exists,pretty_print,basename,mapcount,progressBar
-from pca_scripts.plot import plot_2d_density,plot_2d,trim_axis
+from pca_scripts.plot import plot_2d_density,plot_2d,trim_axis,plot_2d_marginal
 from pca_scripts.color_dict import color_dict
 from verkko.binner import binner
 
@@ -88,16 +88,20 @@ def merge_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract=None,force=False):
                 
     return ref_score,proj_score
 
-def run_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract = None):
+
+def run_pca(pca_root,ref_bed,proj_bed,plink_cmd,flip,extract = None):
     """
     Here we calculate the PC on the ref set and project the other group onto it.
     """
     eigenvec = pca_root + '.eigenvec.var'
     print(eigenvec)
     if not os.path.isfile(eigenvec):
-        approx = "approx" if mapcount(ref_bed.replace('.bed','.fam')) > 5000 else ""
-        extract = f" --extract {extract} " if extract else "" 
-        cmd = f"{plink_cmd} --bfile {basename(ref_bed)} {extract}  --pca 3  biallelic-var-wts -out {pca_root}"
+        extract = f" --extract {extract} " if extract else ""
+        pca_bed = proj_bed if flip else ref_bed
+        approx = "approx" if mapcount(pca_bed.replace('.bed','.fam')) > 5000 else ""
+        freq = f"--read-freq {pca_bed.replace('.bed','.afreq')}" if {os.path.isfile(pca_bed.replace('.bed','.afreq'))} else " "
+        cmd = f"{plink_cmd} --bfile {basename(pca_bed)} {extract}  --pca 3  biallelic-var-wts -out {pca_root} {freq}"
+        
         subprocess.call(shlex.split(cmd))
     else:
         print('PCA already calculated')
@@ -151,6 +155,8 @@ def plot_projection(ref_scores,proj_scores,plot_root,tag_dict,top_regions):
     #plot_2d_density(df,density_fig,tags=tags,color_map=color_map,max_size=20000)
 
 
+
+    #### TAG/POP STUFF ####
     tag_df = pd.DataFrame(tag_dict.items(),columns=["IID","TAG"]).set_index("IID")
     df = pd.read_csv(plot_data,index_col=0)
     df.update(tag_df)
@@ -168,9 +174,12 @@ def plot_projection(ref_scores,proj_scores,plot_root,tag_dict,top_regions):
     plot_2d(df,tag_scatter,tags=tags,max_size = 20000)
     lw= {elem:.3 for elem in tags}
     lw["proj"] = 1
-    #plot_2d_density(df,tag_density,tags=tags,max_size=np.inf,linewidths=lw,levels = 2)
-    plot_tags(df,plot_root,tags)
 
+    plot_2d_marginal(df,return_bin_data,scatter_fig,tags=tags,color_map=color_map,max_size = 20000,alpha_map={"core":.1,'proj':.3})
+    plot_tags(df,plot_root,tags)
+    #plot_2d_density(df,tag_density,tags=tags,max_size=np.inf,linewidths=lw,levels = 2)
+    
+    
 
 def return_bin_data(data,n_bins =40):
     xmin,xmax = data.to_numpy().min(),data.to_numpy().max()
@@ -218,9 +227,9 @@ def plot_tags(df,plot_root,tags):
         ax.set_ylim(0,max(max(y_max),max(plot_data)))
         
         trim_axis(ax)
-        for tick in ax.xaxis.get_major_ticks():tick.label.set_fontsize(6)
-        for tick in ax.yaxis.get_major_ticks():tick.label.set_fontsize(6)
-
+        for tick in ax.xaxis.get_major_ticks():tick.label1.set_fontsize(6)
+        for tick in ax.yaxis.get_major_ticks():tick.label1.set_fontsize(6)
+        
     handles,labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     leg = ax.legend(by_label.values(),by_label.keys(),loc="lower left", numpoints=1, fancybox = True,prop={'size':4})
@@ -232,7 +241,7 @@ def plot_tags(df,plot_root,tags):
     return
                 
 
-def generate_tag_data(tag_dict,ref_scores,pca_root):
+def generate_tag_data(tag_dict,ref_scores):
     """
     Here i generate the probs for all tags.
     """
@@ -257,7 +266,7 @@ def generate_tag_data(tag_dict,ref_scores,pca_root):
     return summary
 
 
-def calculate_probs(proj_scores,ref_scores,tag_dict,out_root):
+def calculate_probs(proj_scores,ref_scores,tag_dict,out_root,cutoffs):
 
     # read in pc data
     proj_data = pd.read_csv(proj_scores,usecols=['IID','PC1_AVG','PC2_AVG','PC3_AVG'],index_col = 0,sep='\t')
@@ -270,29 +279,44 @@ def calculate_probs(proj_scores,ref_scores,tag_dict,out_root):
         
     print(f"Calculating tag avg/cov...")
     # calculate average and covariance for each core group
-    tag_avg_cov = generate_tag_data(tag_dict,ref_scores,out_root)
+    tag_avg_cov = generate_tag_data(tag_dict,ref_scores)
     for tag in tag_avg_cov:
         print(tag)
         avg,cov = tag_avg_cov[tag]
         tag_dist = cdist(proj_data,avg,metric = 'mahalanobis',VI = cov).flatten()**2
         tag_prob = 1 - chi2.cdf(tag_dist,3)
         df_prob[tag] = tag_prob
-    
-   # df_prob.to_csv(out_probs)
 
-    #df_prob = pd.read_csv(out_probs,index_col=0)
     if "NA" in df_prob: df_prob = df_prob.drop(["NA"],axis=1)
     print(df_prob)
 
+    df_prob.to_csv(out_root + '_probs.txt')
 
-    hit_regions = df_prob.idxmax(axis=1)
+    # top region
+    hit_regions = df_prob.idxmax(axis=1) # get column of max value
     top_regions = [elem for elem  in Counter(hit_regions).most_common()]
-    with open(out_root + "_samples_most_likely_region.txt",'wt') as o:
+
+    region_root = out_root + "_samples_most_likely_region.txt"
+    with open(region_root,'wt') as o:
         for entry in zip(samples,hit_regions):
             o.write('\t'.join(map(str,entry)) + '\n')
+
+
+    # now i filter the df for all cutoff values
+    for cutoff in sorted(cutoffs):
+        with open(region_root.replace(".txt",f"_{cutoff}.txt"),'wt') as o:
+            df_prob[df_prob<cutoff] = 0 #set values under threshold to 0
+            # zip together index,max val and region of max val
+            for entry in zip(df_prob.index,df_prob.max(axis=1),df_prob.idxmax(axis=1)): 
+                sample,value,region = entry
+                # if value is non 0 it means it's above threshold
+                region = region if float(value) else "NA"
+                o.write('\t'.join([sample,region]) + '\n')   
+    
     return top_regions
 
 
+    
 
 def main(args):
     pretty_print("TAG DICT")
@@ -308,12 +332,12 @@ def main(args):
         pretty_print("MERGE-PCA")
         ref_scores,proj_scores =  merge_pca(pca_root,args.ref_bed,args.proj_bed,plink_cmd,args.extract,args.force)
     else:
-        ref_scores,proj_scores = run_pca(pca_root,args.ref_bed,args.proj_bed,plink_cmd,args.extract)
+        ref_scores,proj_scores = run_pca(pca_root,args.ref_bed,args.proj_bed,plink_cmd,args.flip,args.extract)
 
     plot_path = os.path.join(args.out_path,'plot')
     plot_root = os.path.join(plot_path,args.name)
 
-    top_regions = calculate_probs(proj_scores,ref_scores,tag_dict,os.path.join(args.out_path,args.name))
+    top_regions = calculate_probs(proj_scores,ref_scores,tag_dict,os.path.join(args.out_path,args.name),args.cutoffs)
     if args.plot:
         pretty_print("PLOT PROJECTION")
         make_sure_path_exists(plot_path)
@@ -339,15 +363,20 @@ if __name__=='__main__':
     parser.add_argument("--sample-info", type=file_exists, help =  "Tsv file with sample data, used for grouping.", required = True)
     parser.add_argument('--plot',action = 'store_true',help = 'Plotting',default = False)
     parser.add_argument('--force',action = 'store_true',help = 'Recompute PCA',default = False)
-    
+    parser.add_argument('--flip',action = 'store_true',help = 'Inverts choice of ref/proj for calculating PCs',default = False)
+    parser.add_argument( '--cutoffs', nargs='+', type = str, default=[0.5,0.8,0.9,0.99])
+
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--proj', action='store_true')
     group.add_argument('--merge', action='store_true')
 
-    parser.add_argument("--pargs", type=str,help ="Plink pca args",default = " --geno --maf")
+    parser.add_argument("--pargs", type=str,help ="Plink pca args",default = " ")
     parser.add_argument("--extract", type=file_exists, help =  "Snps to use.", required = False)
     args = parser.parse_args()
+
     make_sure_path_exists(args.out_path)
     name_tag = "_merged" if args.merge else "_proj"
-    args.name += name_tag
+    flip_tag = "_flip" if args.flip else ""
+    args.name += name_tag + flip_tag
+
     main(args)

@@ -1,16 +1,19 @@
 {
-    "outlier_origin.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:outliers",
-    "outlier_origin.chip_outlier_root":"gs://r11-data/ethnic/plink/r11-ethnic-chip",
-    "outlier_origin.panel_root": "gs://r11-data/ethnic/plink/HGDP-chip-meta",
+    "outlier_origin.docker": "eu.gcr.io/finngen-refinery-dev/pca_kinship:r12.ethnic.1",
+    "outlier_origin.chip_outlier_root":"gs://r12-data/ethnic/plink/r12-ethnic-chip",
+    "outlier_origin.panel_root": "gs://r12-data/ethnic/plink/panel/HGDP-chip-meta",
+
+    # FIRST ROUND & PLOTTING
+    "outlier_origin.pop_type": "pop", #pop or subpop
+    "outlier_origin.reference_map": {"pop":"gs://thousand_genome/hgdp/gnomad_meta_pop_pca.txt","subpop":"gs://thousand_genome/hgdp/gnomad_meta_subpop_pca.txt"},
+
     # PRUNE
     "outlier_origin.prune_chip.target": 50000,
     "outlier_origin.prune_chip.ld_params": "500 50 0.9 0.05",
     "outlier_origin.prune_chip.pargs": " ' --snps-only --chr 1-22 --max-alleles 2 --maf 0.01 ' ",
-    # FIRST ROUND
-    "outlier_origin.first_round_chip.reference_regions": "gs://thousand_genome/hgdp/gnomad_meta_pop_pca.txt",
-   
+       
     # FILTER IMPUTED
-    "outlier_origin.filter_imputed.plink_outliers_path": "gs://r11-data/ethnic/plink/r11-ethnic-outliers",
+    "outlier_origin.filter_imputed.plink_outliers_path": "gs://r12-data/ethnic/plink/r12-ethnic-outliers",
 
 }
 
