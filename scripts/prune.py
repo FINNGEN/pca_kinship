@@ -16,7 +16,6 @@ def filter_variants(args):
         args.force = True
         cat_cmd = "zcat " if is_gz_file(info_file) else "cat "
         cmd = cat_cmd + info_file +  " | awk 'BEGIN{min=9}{for(i=1;i<=NF;i++){min=(min<$i)?min:$i}print $1,min;min=9}'   | sed -E 1d | awk '{ if($2 >= " + info_filter +") { print $1}}' > " + filtered_snps
-        print(cmd)
         tmp_bash(cmd)
     else:
         print(f"{filtered_snps} already generated")

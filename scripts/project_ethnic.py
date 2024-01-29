@@ -88,16 +88,20 @@ def merge_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract=None,force=False):
                 
     return ref_score,proj_score
 
-def run_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract = None):
+
+def run_pca(pca_root,ref_bed,proj_bed,plink_cmd,flip,extract = None):
     """
     Here we calculate the PC on the ref set and project the other group onto it.
     """
     eigenvec = pca_root + '.eigenvec.var'
     print(eigenvec)
     if not os.path.isfile(eigenvec):
-        approx = "approx" if mapcount(ref_bed.replace('.bed','.fam')) > 5000 else ""
-        extract = f" --extract {extract} " if extract else "" 
-        cmd = f"{plink_cmd} --bfile {basename(ref_bed)} {extract}  --pca 3  biallelic-var-wts -out {pca_root}"
+        extract = f" --extract {extract} " if extract else ""
+        pca_bed = proj_bed if flip else ref_bed
+        approx = "approx" if mapcount(pca_bed.replace('.bed','.fam')) > 5000 else ""
+        freq = f"--read-freq {pca_bed.replace('.bed','.afreq')}" if {os.path.isfile(pca_bed.replace('.bed','.afreq'))} else " "
+        cmd = f"{plink_cmd} --bfile {basename(pca_bed)} {extract}  --pca 3  biallelic-var-wts -out {pca_root} {freq}"
+        
         subprocess.call(shlex.split(cmd))
     else:
         print('PCA already calculated')
@@ -328,7 +332,7 @@ def main(args):
         pretty_print("MERGE-PCA")
         ref_scores,proj_scores =  merge_pca(pca_root,args.ref_bed,args.proj_bed,plink_cmd,args.extract,args.force)
     else:
-        ref_scores,proj_scores = run_pca(pca_root,args.ref_bed,args.proj_bed,plink_cmd,args.extract)
+        ref_scores,proj_scores = run_pca(pca_root,args.ref_bed,args.proj_bed,plink_cmd,args.flip,args.extract)
 
     plot_path = os.path.join(args.out_path,'plot')
     plot_root = os.path.join(plot_path,args.name)
@@ -359,18 +363,20 @@ if __name__=='__main__':
     parser.add_argument("--sample-info", type=file_exists, help =  "Tsv file with sample data, used for grouping.", required = True)
     parser.add_argument('--plot',action = 'store_true',help = 'Plotting',default = False)
     parser.add_argument('--force',action = 'store_true',help = 'Recompute PCA',default = False)
-    parser.add_argument( '--cutoffs', nargs='+', type = str, default=[0.8,0.9,0.99])
+    parser.add_argument('--flip',action = 'store_true',help = 'Inverts choice of ref/proj for calculating PCs',default = False)
+    parser.add_argument( '--cutoffs', nargs='+', type = str, default=[0.5,0.8,0.9,0.99])
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--proj', action='store_true')
     group.add_argument('--merge', action='store_true')
 
-    parser.add_argument("--pargs", type=str,help ="Plink pca args",default = " --geno --maf")
+    parser.add_argument("--pargs", type=str,help ="Plink pca args",default = " ")
     parser.add_argument("--extract", type=file_exists, help =  "Snps to use.", required = False)
     args = parser.parse_args()
 
     make_sure_path_exists(args.out_path)
     name_tag = "_merged" if args.merge else "_proj"
-    args.name += name_tag
+    flip_tag = "_flip" if args.flip else ""
+    args.name += name_tag + flip_tag
 
     main(args)
