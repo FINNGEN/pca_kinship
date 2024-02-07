@@ -266,7 +266,7 @@ def generate_tag_data(tag_dict,ref_scores):
     return summary
 
 
-def calculate_probs(proj_scores,ref_scores,tag_dict,out_root,cutoffs):
+def generate_df(proj_scores,ref_scores,tag_dict,out_root):
 
     # read in pc data
     proj_data = pd.read_csv(proj_scores,usecols=['IID','PC1_AVG','PC2_AVG','PC3_AVG'],index_col = 0,sep='\t')
@@ -291,28 +291,35 @@ def calculate_probs(proj_scores,ref_scores,tag_dict,out_root,cutoffs):
     print(df_prob)
 
     df_prob.to_csv(out_root + '_probs.txt')
+    return df_prob,out_root
 
+def calculate_probs(df_prob,cutoffs,out_root):
     # top region
     hit_regions = df_prob.idxmax(axis=1) # get column of max value
     top_regions = [elem for elem  in Counter(hit_regions).most_common()]
 
     region_root = out_root + "_samples_most_likely_region.txt"
     with open(region_root,'wt') as o:
-        for entry in zip(samples,hit_regions):
-            o.write('\t'.join(map(str,entry)) + '\n')
-
+        for entry in hit_regions.to_dict().items():
+            o.write('\t'.join(list(map(str,entry))) + '\n')
 
     # now i filter the df for all cutoff values
     for cutoff in sorted(cutoffs):
+        tmp_df = df_prob.copy(deep=True)
         with open(region_root.replace(".txt",f"_{cutoff}.txt"),'wt') as o:
-            df_prob[df_prob<cutoff] = 0 #set values under threshold to 0
+            tmp_df[df_prob<cutoff] = 0 #set values under threshold to 0
             # zip together index,max val and region of max val
-            for entry in zip(df_prob.index,df_prob.max(axis=1),df_prob.idxmax(axis=1)): 
+            for entry in zip(df_prob.index,tmp_df.max(axis=1),tmp_df.idxmax(axis=1)): 
                 sample,value,region = entry
                 # if value is non 0 it means it's above threshold
                 region = region if float(value) else "NA"
                 o.write('\t'.join([sample,region]) + '\n')   
-    
+
+
+    if "FIN" in list(df_prob.columns.values):
+        df = df_prob.drop(columns=["FIN"])
+        calculate_probs(df,cutoffs,out_root + "_finless")
+                
     return top_regions
 
 
@@ -337,7 +344,9 @@ def main(args):
     plot_path = os.path.join(args.out_path,'plot')
     plot_root = os.path.join(plot_path,args.name)
 
-    top_regions = calculate_probs(proj_scores,ref_scores,tag_dict,os.path.join(args.out_path,args.name),args.cutoffs)
+    
+    df,out_root = generate_df(proj_scores,ref_scores,tag_dict,os.path.join(args.out_path,args.name))
+    top_regions = calculate_probs(df,args.cutoffs,out_root)
     if args.plot:
         pretty_print("PLOT PROJECTION")
         make_sure_path_exists(plot_path)
