@@ -1,16 +1,10 @@
 #!/usr/bin/env Rscript
 
+options(repos = c(CRAN = "https://cloud.r-project.org/"))
+
 install.packages("https://cran.r-project.org/src/contrib/Archive/rlang/rlang_0.4.10.tar.gz", repos = NULL, type="source")
-
-
-req_packages <- c("plotly","optparse","dplyr","ggplot2","data.table","tidyr","htmlwidgets","MCMCpack","mvtnorm", "ellipse","igraph","devtools")
-for (pack in req_packages) {
-    if(!require(pack,character.only = TRUE)) {
-        install.packages(pack, repos = "http://cran.us.r-project.org")
-    }
-    if(!require(pack,character.only = TRUE)) {
-        install.packages(pack)
-    }
-}
-
+# install requirements from file
+packages_to_install = read.csv("my_packages.csv")
+install.packages(packages_to_install$Package)
+library("devtools")
 install_github("carbocation/aberrant")

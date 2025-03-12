@@ -453,9 +453,11 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     start, end = ax.get_xlim()
     ax.xaxis.set_ticks(np.linspace(start,end,5))
     ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
-    for ticks in [ax.xaxis.get_major_ticks(),ax.yaxis.get_major_ticks(),ax.zaxis.get_major_ticks()]:
-        for tick in ticks:
-            tick.label.set_fontsize(label_fontsize)
+
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=label_fontsize)
+    ax.set_yticklabels(ax.get_yticklabels(), fontsize=label_fontsize)
+    ax.set_zticklabels(ax.get_zticklabels(), fontsize=label_fontsize)
+
 
     start, end = ax.get_ylim()
     ax.yaxis.set_ticks(np.linspace(start,end,5))
@@ -472,7 +474,7 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
 
     trim_axis(ax)
     leg = ax.legend(loc='upper left', numpoints=1, fancybox = True,prop={'size': legend_fontsize})
-    for lh in leg.legendHandles:
+    for lh in leg.legend_handles:
         lh.set_alpha(1)
         lh._sizes = [50]
         
@@ -546,14 +548,12 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
 
-        for tick in ax.xaxis.get_major_ticks():
-            tick.label.set_fontsize(6)
-        for tick in ax.yaxis.get_major_ticks():
-            tick.label.set_fontsize(6)
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=6)
 
     leg_ax = axes[axis_legend]
     leg = leg_ax.legend(loc=legend_location, numpoints=1, fancybox = True,prop={'size': legend_fontsize})
-    for lh in leg.legendHandles:
+    for lh in leg.legend_handles:
         lh.set_alpha(1)
         if rescale:
             lh._sizes = [lh._sizes[0]*7]
@@ -651,10 +651,8 @@ def plot_2d_density(pc_data,out_file,tags,pcs,color_map=None,tag_column="TAG",ma
         trim_axis(ax)
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
-        for tick in ax.xaxis.get_major_ticks():
-            tick.label.set_fontsize(6)
-        for tick in ax.yaxis.get_major_ticks():
-            tick.label.set_fontsize(6)
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=6)
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)
 
     leg_ax = axes[axis_legend]
     leg = leg_ax.legend(loc=legend_location,handles=handles,numpoints=1, fancybox = True,prop={'size': legend_fontsize})

@@ -135,11 +135,9 @@ def plot_degree_dist(args):
     yticks = list(range(0,int(max(deg_count)) +2))
     ax.set_yticks(yticks)
     ylabels = [r"$10^{{ {:2d} }}$".format(exponent) for exponent in yticks]
-    ax.set_yticklabels(ylabels)
+    ax.set_yticklabels(ylabels,fontsize=7)
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)
 
-    for tick in ax.xaxis.get_major_ticks() + ax.yaxis.get_major_ticks():
-        tick.label.set_fontsize(6)
-        
     fig.savefig(args.degree_fig)
     plt.close()
     print('done')
@@ -170,7 +168,7 @@ def plot_kinship(args):
         
     entries = len(kin_data)
 
-    xPos = [0.0442,0.0884,0.177,0.354,0.51]
+    xPos = [0.0221,0.0442,0.0884,0.177,0.354,0.51]
        
     bin_data_file = os.path.join(args.kinship_path,'bin_average.npy')
     plot_data_file = os.path.join(args.kinship_path,'plot_data.npy')
@@ -215,9 +213,8 @@ def plot_kinship(args):
     #ax2.set_yticklabels([0,entries])
     ax2.set_ylabel(r'$P(k < x) $')
 
-    for tick in ax.xaxis.get_major_ticks():
-        tick.label.set_rotation(30)
-        tick.label.set_fontsize(7)     
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=30, fontsize=7)
+
 
     fig.savefig(args.kinship_fig)
     plt.close()
