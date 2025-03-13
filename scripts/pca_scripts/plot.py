@@ -392,7 +392,9 @@ def plot_tag_averages(pc_data,tags,out_file,pc_columns):
             tag_data = pc_data[column][pc_data["TAG"] == tag]
             violin_data.append(tag_data)
 
-        sns.violinplot(data=violin_data,ax = ax,scale = 'count')
+        sns.violinplot(data=violin_data,ax = ax,density_norm = 'count')
+        ax.set_xticks(range(len(tags)))
+        # Then set the tick labels
         ax.set(xticklabels=tags)
         ax.tick_params(axis='both', which='major', labelsize=6, rotation=45)
 
@@ -454,9 +456,8 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     ax.xaxis.set_ticks(np.linspace(start,end,5))
     ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
 
-    ax.set_xticklabels(ax.get_xticklabels(), fontsize=label_fontsize)
-    ax.set_yticklabels(ax.get_yticklabels(), fontsize=label_fontsize)
-    ax.set_zticklabels(ax.get_zticklabels(), fontsize=label_fontsize)
+    for _ax in ['x','y','z']:
+        ax.tick_params(axis=_ax, labelsize=label_fontsize)
 
 
     start, end = ax.get_ylim()
@@ -472,7 +473,7 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     ax.set_ylabel(pc_tags[1],fontsize=10)
     ax.set_zlabel(pc_tags[2],fontsize=10)
 
-    trim_axis(ax)
+    trim_axis(ax,'lower')
     leg = ax.legend(loc='upper left', numpoints=1, fancybox = True,prop={'size': legend_fontsize})
     for lh in leg.legend_handles:
         lh.set_alpha(1)
@@ -544,12 +545,13 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
         ax = axes[i]
         ax.set_xlabel(tag1)
         ax.set_ylabel(tag2)
-        trim_axis(ax)
+        trim_axis(ax,'bottom')
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
 
-        ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)
-        ax.set_yticklabels(ax.get_yticklabels(), fontsize=6)
+        ax.tick_params(axis='y', labelsize=6)
+        ax.tick_params(axis='x', labelsize=6)
+
 
     leg_ax = axes[axis_legend]
     leg = leg_ax.legend(loc=legend_location, numpoints=1, fancybox = True,prop={'size': legend_fontsize})
@@ -568,10 +570,10 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
 
 
 
-def trim_axis(ax):
+def trim_axis(ax,position):
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.get_xaxis().tick_bottom()
+    ax.get_xaxis().set_ticks_position(position)
     try:
         ax.get_yaxis().tick_left()
     except:
@@ -648,11 +650,11 @@ def plot_2d_density(pc_data,out_file,tags,pcs,color_map=None,tag_column="TAG",ma
         ax = axes[i]
         ax.set_xlabel(tag1)
         ax.set_ylabel(tag2)
-        trim_axis(ax)
+        trim_axis(ax,'bottom')
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
-        ax.set_yticklabels(ax.get_yticklabels(), fontsize=6)
-        ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)
+        ax.tick_params(axis='y', labelsize=6)
+        ax.tick_params(axis='x', labelsize=6)
 
     leg_ax = axes[axis_legend]
     leg = leg_ax.legend(loc=legend_location,handles=handles,numpoints=1, fancybox = True,prop={'size': legend_fontsize})

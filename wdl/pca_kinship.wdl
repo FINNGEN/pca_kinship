@@ -100,7 +100,6 @@ task pca {
   Int disk_size =   ceil(size(bed_file,"GB"))*6 + ceil(size(tg_bed,"GB")) + 100
   Int mem = ceil(size(bed_file,"GB"))*3 + 10
   
-  String out_path = "~/"
   String out_file = prefix + "_output.log"
 
   String? final_docker = if defined(pca_docker) then pca_docker else docker
@@ -115,10 +114,10 @@ task pca {
     --name ~{prefix} \
     --aberrant-lambda ~{aberrant_lambda} \
     --meta ~{metadata} \
-    -o ~{out_path} \
+    -o . \
     --release |& tee ~{out_file}
     
-    mv ~{out_file} ~/documentation/
+    mv ~{out_file} ./documentation/
     
   >>>
   runtime {
@@ -132,11 +131,11 @@ task pca {
   }
   
   output {
-    File readme = "~{out_path}/${prefix}_pca_readme"
+    File readme = "./${prefix}_pca_readme"
     #DATA
-    Array[File] data =    glob("~/data/${prefix}*")
+    Array[File] data =    glob("./data/${prefix}*")
     #DOCUMENTATION
-    Array[File] doc =    glob("~/documentation/${prefix}*")
+    Array[File] doc =    glob("./documentation/${prefix}*")
   }
 }
 
@@ -181,12 +180,12 @@ task kinship{
   }
   
   output {
-    File readme = "~/~{prefix}_kinship_readme"
+    File readme = "./~{prefix}_kinship_readme"
     
     # DATA
-    Array[File] data  = glob("~/data/~{prefix}*")	
+    Array[File] data  = glob("./data/~{prefix}*")	
     #DOCUMENTATION
-    Array[File] doc = glob("~/documentation/~{prefix}*")
+    Array[File] doc = glob("./documentation/~{prefix}*")
 
     File bed = "./data/${prefix}_kinship.bed"
     File fam = "./data/${prefix}_kinship.fam"

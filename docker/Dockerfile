@@ -7,7 +7,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 
 RUN apt-get update && apt-get upgrade --yes
-RUN apt-get install parallel ghostscript libproj-dev proj-data proj-bin --yes &&  apt-get install libgeos-dev libjpeg-dev zlib1g-dev  --yes
+RUN apt-get install parallel ghostscript libproj-dev proj-data proj-bin --yes &&  apt-get install libgeos-dev libjpeg-dev zlib1g-dev libharfbuzz-dev  libfribidi-dev --yes
 
 # PYTHON PACKAGES
 ADD ./docker/requirements.txt .
@@ -15,6 +15,8 @@ RUN python3 -m pip install -r requirements.txt
  
 # R RELATED STUFF
 ADD ./docker/install_packages.R /usr/local/bin/
+# THIS TAKES WAAAAAY TO LONG,SO I CACHE IT
+#RUN Rscript -e 'install.packages("devtools", repos="https://cloud.r-project.org")'
 ADD ./docker/my_packages.csv .
 RUN chmod a+x /usr/local/bin/install_packages.R && install_packages.R
 
