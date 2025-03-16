@@ -169,6 +169,7 @@ task kinship{
     
   }
   
+  
   runtime {
     docker: "~{final_docker}"
     cpu: "~{cpu}"

@@ -222,7 +222,7 @@ def release_log(args):
         
         # NUMBER OF COUPLES PER KINSHIP TYPE
         idx = return_header(args.kin_file).index('InfType')
-        data = np.loadtxt(args.kin_file,usecols=idx,dtype =str)
+        data = np.loadtxt(args.kin_file,usecols=idx,dtype ='<U20')
         count =Counter(data)
 
         o.write('\n|Kinship Type|Number of couples|\n')

@@ -20,6 +20,7 @@ def main(args,do_plot=True):
     args.annot_pop,args.fg_tags = ethnic_outliers.build_superpop(args)
     aberrant_output,args.ethnic_outliers = ethnic_outliers.detect_ethnic_outliers(args)
     args.finngen_eur_outliers = ethnic_outliers.detect_eur_outliers(args,aberrant_output)
+    
     args.all_outliers = ethnic_outliers.all_outliers(args,[args.ethnic_outliers,args.finngen_eur_outliers])
     
     #KINSHIP DATA

@@ -177,7 +177,7 @@ def return_fin_eur_df(args):
     if not os.path.isfile(out_file):
         pc_avg = ["PC1_AVG",'PC2_AVG','PC3_AVG']
         df_list = []
-        eur_outliers = np.loadtxt(args.finngen_eur_outliers,dtype = str,usecols = 0)
+        eur_outliers = np.loadtxt(args.finngen_eur_outliers,dtype ='<U20',usecols = 0)
         for tag in ['eur','fin','finngen']:
             score_file =  os.path.join(args.pca_outlier_path, "eur_pca/", tag + '.sscore' )
             df =  pd.read_csv(score_file,sep = '\t',usecols = ['IID'] + pc_avg, dtype = {pc: np.float64 for pc in pc_avg}).rename(columns = {pc: pc.replace("_AVG","") for pc in pc_avg})
@@ -247,7 +247,7 @@ def return_outliers_df(args):
         eigenvec_path =  tg_pca_file  + '.eigenvec'
         #import metadata about samples
         outlier_info = tg_pca_file + '_outlier_samples.tsv'
-        samples = np.loadtxt(args.sample_fam,usecols = 1,dtype = str)
+        samples = np.loadtxt(args.sample_fam,usecols = 1,dtype ='<U20')
         # read pc data
         pc_data = pd.read_csv(eigenvec_path,sep = '\t',usecols = ['IID',"PC1",'PC2','PC3'], dtype = {pc: np.float64 for pc in ["PC1",'PC2','PC3']})
         # set finngen samples as "FINNGEN"

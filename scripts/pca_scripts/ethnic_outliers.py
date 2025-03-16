@@ -43,16 +43,13 @@ def detect_eur_outliers(args,aberrant_output):
     """
     eur_outlier_path = os.path.join(args.pca_outlier_path, "eur_pca/")
     make_sure_path_exists(eur_outlier_path)
-
     eur_pca = finnish_eur_classifier(args,eur_outlier_path,aberrant_output)
-    
     return eur_pca
 
 
 def finnish_eur_classifier(args,eur_outlier_path,aberrant_output):
     """
     Function that returns file with excluded FG samples that survived first round based on EUR/FIN ground truth classification.
-
     """
 
     finngen_eur_outliers = os.path.join(args.pca_outlier_path,args.name +  '_eur_outliers.txt')
@@ -60,21 +57,22 @@ def finnish_eur_classifier(args,eur_outlier_path,aberrant_output):
 
         # RETURN EUROPEAN OUTLIERS  
         eur,fin,finngen = eur_outlier_path + 'eur.txt',  eur_outlier_path + 'fin.txt', eur_outlier_path + "finngen.txt" # files with survivors from different populations
-
         # write fam of survivors
         columns = "1,2,6" # columns with ID,OUTLIER_BOOL,POP
-        survivors_cmd = f"cat {aberrant_output} | cut -f {columns} | grep FALSE"
-        for pop,f in [("EUR",eur),("FIN",fin)]:
+        for pop,f in [("EUR",eur),("FIN",fin)]: 
             tmp_bash(f"cat {aberrant_output} | grep -w {pop}  | cut -f1 |  awk '{{print $0,$NF}}'> {f}",False)
         # remainin FG samples
-        tmp_bash(f"cat {survivors_cmd} |  grep -wf {args.merged_plink_file}.fg.samples |  cut -f1 |  awk '{{print $0,$NF}}'> {finngen}",False)
+        #survivors_cmd = f"cat {aberrant_output} | cut -f {columns} | grep FALSE"
+        tmp_bash(f"cat {aberrant_output} | cut -f 1,2,6 | grep FALSE |  grep -wf {args.merged_plink_file}.fg.samples |  cut -f1 |  awk '{{print $0,$NF}}'> {finngen}",False)
 
+        # build PCA based on samples that survived the first round
         eur_pca = pca_round(args,eur_outlier_path,finngen)
         args.force =True
-        #PROJECT
+        #PROJECT all samples (including survivors) into same space for standardization
         for tag,sample_file in [('finngen',finngen),('eur',eur),('fin',fin)]:
             project(args,eur_outlier_path,tag,sample_file,eur_pca)
 
+        # calculate probabilities
         eur_outliers = fin_eur_probs(args,eur_outlier_path,args.pc_filter,args.finn_prob_filter)
         args.logging.debug(f"Eur outliers:{len(eur_outliers)}")
             
@@ -83,7 +81,6 @@ def finnish_eur_classifier(args,eur_outlier_path,aberrant_output):
 
 
     print(f'Finngen EUR outliers : {mapcount(finngen_eur_outliers)}' )
-
     return finngen_eur_outliers
 
 
@@ -204,45 +201,59 @@ def build_superpop(args):
     return annot_pop,fg_tags
 
 
-def fin_eur_probs(args,eur_outlier_path,pc_filter,finn_prob_filter):
-
+def fin_eur_probs(args, eur_outlier_path, pc_filter, finn_prob_filter):
     '''
     Returns probability of being a FIN based on mahalanobis distance to EUR and FIN centroids of finngen samples
     '''
-
-    # read in EUR projection data
-    eur_data = np.loadtxt(eur_outlier_path+ 'eur.eigenvec',dtype = float, skiprows = 1,usecols = range(1,pc_filter+1))
-    eur_avg = np.reshape(np.average(eur_data,axis =0),(1,eur_data.shape[1]))
+    # Read all data files into pandas DataFrames first
+    eur_df = pd.read_csv(eur_outlier_path + 'eur.eigenvec', sep='\s+', header=0)
+    fin_df = pd.read_csv(eur_outlier_path + 'fin.eigenvec', sep='\s+', header=0)
+    finngen_df = pd.read_csv(eur_outlier_path + 'finngen.eigenvec', sep='\s+', header=0)
+    
+    # Extract the numeric PC columns (skip the first column which is IDs)
+    pc_cols = list(eur_df.columns[1:pc_filter+1])
+    
+    # Extract the necessary data as numpy arrays
+    eur_data = eur_df[pc_cols].values
+    fin_data = fin_df[pc_cols].values
+    finngen_data = finngen_df[pc_cols].values
+    finngen_ids = finngen_df.iloc[:, 0].values
+    
+    # Calculate EUR statistics
+    eur_avg = np.reshape(np.average(eur_data, axis=0), (1, eur_data.shape[1]))
     eur_cov = np.linalg.inv(np.cov(eur_data.T))
-    # read in FIN projection data
-    fin_data = np.loadtxt(eur_outlier_path+ 'fin.eigenvec',dtype = float, skiprows = 1,usecols = range(1,pc_filter+1))      
-    fin_avg = np.reshape(np.average(fin_data,axis = 0),(1,fin_data.shape[1]))
+    
+    # Calculate FIN statistics
+    fin_avg = np.reshape(np.average(fin_data, axis=0), (1, fin_data.shape[1]))
     fin_cov = np.linalg.inv(np.cov(fin_data.T))
-    # read in FINNGEN sample data as ground truth
-    finngen_data = np.loadtxt(eur_outlier_path+ 'finngen.eigenvec',dtype = float, skiprows = 1,usecols = range(1,pc_filter+1))
+    
     # MAHALANOBIS DISTANCES
-    eur_dist = cdist(finngen_data,eur_avg,metric = 'mahalanobis',VI = eur_cov).flatten()**2
-    fin_dist = cdist(finngen_data,fin_avg,metric = 'mahalanobis',VI = fin_cov).flatten()**2
+    eur_dist = cdist(finngen_data, eur_avg, metric='mahalanobis', VI=eur_cov).flatten()**2
+    fin_dist = cdist(finngen_data, fin_avg, metric='mahalanobis', VI=fin_cov).flatten()**2
+    
     # PROBS
-    p_eur =  1 - chi2.cdf(eur_dist,pc_filter)
-    p_fin =  1 - chi2.cdf(fin_dist,pc_filter)
+    p_eur = 1 - chi2.cdf(eur_dist, pc_filter)
+    p_fin = 1 - chi2.cdf(fin_dist, pc_filter)
     f_prob = p_fin/(p_fin + p_eur)
-    # save data
-    np.savetxt(args.misc_path + "eur.txt",p_eur)
-    np.savetxt(args.misc_path + "fin.txt",p_fin)
-    np.savetxt(args.misc_path + "prob.txt",f_prob)
-    # return outliers
+    
+    # Save data (using numpy as in original function)
+    np.savetxt(args.misc_path + "eur.txt", p_eur)
+    np.savetxt(args.misc_path + "fin.txt", p_fin)
+    np.savetxt(args.misc_path + "prob.txt", f_prob)
+    
+    # Return outliers
     fin_mask = (f_prob < finn_prob_filter)
     print(f'outliers: {fin_mask.sum()}')
-    eur_outliers = np.loadtxt(eur_outlier_path+ 'finngen.eigenvec',dtype = str, skiprows = 1,usecols = 0 )[fin_mask]
-
-    with open(eur_outlier_path + 'fin_bins.txt','wt') as o:
+    eur_outliers = finngen_ids[fin_mask]
+    
+    # Create bins file
+    with open(eur_outlier_path + 'fin_bins.txt', 'wt') as o:
         fin_probs = f_prob[fin_mask]
         bins = np.linspace(0, 1, 11)
         digitized = np.digitize(fin_probs, bins)
-        for j,bin_value in enumerate([len(fin_probs[digitized == i]) for i in range(1, len(bins))]):
-            o.write(f"{round(bins[j],2)}\t{bin_value}\n")
-        
+        for j, bin_value in enumerate([len(fin_probs[digitized == i]) for i in range(1, len(bins))]):
+            o.write(f"{round(bins[j], 2)}\t{bin_value}\n")
+    
     return eur_outliers
 
 

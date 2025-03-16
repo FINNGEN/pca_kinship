@@ -70,8 +70,8 @@ def merge_pca(pca_root,ref_bed,proj_bed,plink_cmd,extract=None,force=False):
     # SPLIT AND CHANGE HEADER TO MATCH PROJ DATA
     ref_score = pca_root +  '_ref.sscore'
     proj_score =pca_root +  "_proj.sscore"
-    proj_iids = set(np.loadtxt(basename(proj_bed) + '.fam',dtype = str,usecols = 1))
-    ref_iids = set(np.loadtxt(basename(ref_bed) + '.fam',dtype = str,usecols = 1))
+    proj_iids = set(np.loadtxt(basename(proj_bed) + '.fam',dtype ='<U20',usecols = 1))
+    ref_iids = set(np.loadtxt(basename(ref_bed) + '.fam',dtype = '<U20',usecols = 1))
 
     with open(ref_score,'wt') as ref,open(proj_score,'wt') as proj,open(eigenvec) as i:
         new_header = '\t'.join([elem +"_AVG"  if elem.startswith("PC") else elem for elem in next(i).strip().split()]) + '\n'
