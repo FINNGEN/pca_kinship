@@ -177,7 +177,7 @@ def return_fin_eur_df(args):
     if not os.path.isfile(out_file):
         pc_avg = ["PC1_AVG",'PC2_AVG','PC3_AVG']
         df_list = []
-        eur_outliers = np.loadtxt(args.finngen_eur_outliers,dtype = str,usecols = 0)
+        eur_outliers = np.loadtxt(args.finngen_eur_outliers,dtype ='<U20',usecols = 0)
         for tag in ['eur','fin','finngen']:
             score_file =  os.path.join(args.pca_outlier_path, "eur_pca/", tag + '.sscore' )
             df =  pd.read_csv(score_file,sep = '\t',usecols = ['IID'] + pc_avg, dtype = {pc: np.float64 for pc in pc_avg}).rename(columns = {pc: pc.replace("_AVG","") for pc in pc_avg})
@@ -247,7 +247,7 @@ def return_outliers_df(args):
         eigenvec_path =  tg_pca_file  + '.eigenvec'
         #import metadata about samples
         outlier_info = tg_pca_file + '_outlier_samples.tsv'
-        samples = np.loadtxt(args.sample_fam,usecols = 1,dtype = str)
+        samples = np.loadtxt(args.sample_fam,usecols = 1,dtype ='<U20')
         # read pc data
         pc_data = pd.read_csv(eigenvec_path,sep = '\t',usecols = ['IID',"PC1",'PC2','PC3'], dtype = {pc: np.float64 for pc in ["PC1",'PC2','PC3']})
         # set finngen samples as "FINNGEN"
@@ -392,7 +392,9 @@ def plot_tag_averages(pc_data,tags,out_file,pc_columns):
             tag_data = pc_data[column][pc_data["TAG"] == tag]
             violin_data.append(tag_data)
 
-        sns.violinplot(data=violin_data,ax = ax,scale = 'count')
+        sns.violinplot(data=violin_data,ax = ax,density_norm = 'count')
+        ax.set_xticks(range(len(tags)))
+        # Then set the tick labels
         ax.set(xticklabels=tags)
         ax.tick_params(axis='both', which='major', labelsize=6, rotation=45)
 
@@ -453,9 +455,10 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     start, end = ax.get_xlim()
     ax.xaxis.set_ticks(np.linspace(start,end,5))
     ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
-    for ticks in [ax.xaxis.get_major_ticks(),ax.yaxis.get_major_ticks(),ax.zaxis.get_major_ticks()]:
-        for tick in ticks:
-            tick.label.set_fontsize(label_fontsize)
+
+    for _ax in ['x','y','z']:
+        ax.tick_params(axis=_ax, labelsize=label_fontsize)
+
 
     start, end = ax.get_ylim()
     ax.yaxis.set_ticks(np.linspace(start,end,5))
@@ -470,9 +473,9 @@ def plot_3d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
     ax.set_ylabel(pc_tags[1],fontsize=10)
     ax.set_zlabel(pc_tags[2],fontsize=10)
 
-    trim_axis(ax)
+    trim_axis(ax,'lower')
     leg = ax.legend(loc='upper left', numpoints=1, fancybox = True,prop={'size': legend_fontsize})
-    for lh in leg.legendHandles:
+    for lh in leg.legend_handles:
         lh.set_alpha(1)
         lh._sizes = [50]
         
@@ -542,18 +545,17 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
         ax = axes[i]
         ax.set_xlabel(tag1)
         ax.set_ylabel(tag2)
-        trim_axis(ax)
+        trim_axis(ax,'bottom')
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
 
-        for tick in ax.xaxis.get_major_ticks():
-            tick.label.set_fontsize(6)
-        for tick in ax.yaxis.get_major_ticks():
-            tick.label.set_fontsize(6)
+        ax.tick_params(axis='y', labelsize=6)
+        ax.tick_params(axis='x', labelsize=6)
+
 
     leg_ax = axes[axis_legend]
     leg = leg_ax.legend(loc=legend_location, numpoints=1, fancybox = True,prop={'size': legend_fontsize})
-    for lh in leg.legendHandles:
+    for lh in leg.legend_handles:
         lh.set_alpha(1)
         if rescale:
             lh._sizes = [lh._sizes[0]*7]
@@ -568,10 +570,10 @@ def plot_2d(pc_data,out_file,tags,pc_columns = ['PC1','PC2','PC3'],pc_tags = Non
 
 
 
-def trim_axis(ax):
+def trim_axis(ax,position):
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.get_xaxis().tick_bottom()
+    ax.get_xaxis().set_ticks_position(position)
     try:
         ax.get_yaxis().tick_left()
     except:
@@ -648,13 +650,11 @@ def plot_2d_density(pc_data,out_file,tags,pcs,color_map=None,tag_column="TAG",ma
         ax = axes[i]
         ax.set_xlabel(tag1)
         ax.set_ylabel(tag2)
-        trim_axis(ax)
+        trim_axis(ax,'bottom')
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
         ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.3f'))
-        for tick in ax.xaxis.get_major_ticks():
-            tick.label.set_fontsize(6)
-        for tick in ax.yaxis.get_major_ticks():
-            tick.label.set_fontsize(6)
+        ax.tick_params(axis='y', labelsize=6)
+        ax.tick_params(axis='x', labelsize=6)
 
     leg_ax = axes[axis_legend]
     leg = leg_ax.legend(loc=legend_location,handles=handles,numpoints=1, fancybox = True,prop={'size': legend_fontsize})

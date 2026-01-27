@@ -109,7 +109,7 @@ def project_all(args,eigenvecs):
         # merge both projections
         with open(final_eigenvec,'wt') as o:
             o.write(original_header)
-            rejected = np.loadtxt(args.rejected_file,usecols = 0,dtype = str)
+            rejected = np.loadtxt(args.rejected_file,usecols = 0,dtype ='<U20')
             for f in [projected_pca_file,core_pca_file]:
                 sample_iterator = basic_iterator(f,skiprows =1 ,columns = pc_cols)
                 for entry in sample_iterator:

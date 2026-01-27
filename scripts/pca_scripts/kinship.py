@@ -48,7 +48,7 @@ def kinship(args):
         g = nx.read_edgelist(args.related_couples)
         print(g.number_of_nodes())
         if args.test:
-            samples = np.loadtxt(args.sample_fam ,usecols = [0],dtype = str)
+            samples = np.loadtxt(args.sample_fam ,usecols = [0],dtype ='<U20')
             g = nx.Graph(g.subgraph(samples))
 
         print(g.number_of_nodes())

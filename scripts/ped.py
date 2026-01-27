@@ -222,7 +222,7 @@ def release_log(args):
         
         # NUMBER OF COUPLES PER KINSHIP TYPE
         idx = return_header(args.kin_file).index('InfType')
-        data = np.loadtxt(args.kin_file,usecols=idx,dtype =str)
+        data = np.loadtxt(args.kin_file,usecols=idx,dtype ='<U20')
         count =Counter(data)
 
         o.write('\n|Kinship Type|Number of couples|\n')
@@ -241,25 +241,25 @@ def release_log(args):
         out_cmd = f"  >{tmp_file}"
 
         desc ='Number of Finngen_mother Finngen_father couples who have at least one child in Finngen'
-        trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep -o '\\bF\w*_FG\w*'  | wc -l {out_cmd}""" 
+        trio_cmd =  f""" {basic_cmd} |  uniq -c |  grep -o '\\bF\\w*_FG\\w*'  | wc -l {out_cmd}""" 
         tmp_bash(trio_cmd)
         trios =  read_int(tmp_file)
         o.write('|' + '|'.join(['Trios',str(trios),desc]) + '|\n')
         
         desc = "Total number of trios (i.e. counting multiples)"
-        all_trio_cmd =  f""" {basic_cmd} |    grep  '\\bFG\w*_FG\w*' |  wc -l  {out_cmd}""" 
+        all_trio_cmd =  f""" {basic_cmd} |    grep  '\\bFG\\w*_FG\\w*' |  wc -l  {out_cmd}""" 
         tmp_bash(all_trio_cmd)
         all_trios = read_int(tmp_file)
         o.write('|' + '|'.join(['All Trios',str(all_trios),desc]) + '|\n')
 
         desc = "Parent - child duos where the other parent is not in Finngen"
-        duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o  '\\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*' | wc -l  {out_cmd} "
+        duos_cmd =  f" {basic_cmd} |  uniq -c | grep -o  '\\bFG\\w*\|\\w*_FG\\w*' | grep -v '\\bFG\\w*_FG\\w*' | wc -l  {out_cmd} "
         tmp_bash(duos_cmd)
         duos =  read_int(tmp_file) 
         o.write('|' + '|'.join(['Duos',str(duos),desc]) + '|\n')
         
         desc = "Total number of duos counting multiples"
-        all_duos_cmd =  f" {basic_cmd} |   grep  '\\bFG\w*\|\w*_FG\w*' | grep -v '\\bFG\w*_FG\w*' | wc -l   {out_cmd} "
+        all_duos_cmd =  f" {basic_cmd} |   grep  '\\bFG\\w*\|\\w*_FG\\w*' | grep -v '\\bFG\\w*_FG\\w*' | wc -l   {out_cmd} "
         tmp_bash(all_duos_cmd)
         all_duos = read_int(tmp_file)  
         o.write('|' + '|'.join(['All Duos',str(all_duos),desc]) + '|\n')

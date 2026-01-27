@@ -100,13 +100,12 @@ task pca {
   Int disk_size =   ceil(size(bed_file,"GB"))*6 + ceil(size(tg_bed,"GB")) + 100
   Int mem = ceil(size(bed_file,"GB"))*3 + 10
   
-  String out_path = "/cromwell_root/"
   String out_file = prefix + "_output.log"
 
   String? final_docker = if defined(pca_docker) then pca_docker else docker
   command <<<
   df -h
-    python3.7 /scripts/pca.py \
+    python3 /scripts/pca.py \
     --bed  ~{bed_file} \
     --tg-bed ~{tg_bed} \
     --kin ~{kin_file} \
@@ -115,10 +114,10 @@ task pca {
     --name ~{prefix} \
     --aberrant-lambda ~{aberrant_lambda} \
     --meta ~{metadata} \
-    -o ~{out_path} \
+    -o . \
     --release |& tee ~{out_file}
     
-    mv ~{out_file} /cromwell_root/documentation/
+    mv ~{out_file} ./documentation/
     
   >>>
   runtime {
@@ -132,11 +131,11 @@ task pca {
   }
   
   output {
-    File readme = "~{out_path}/${prefix}_pca_readme"
+    File readme = "./${prefix}_pca_readme"
     #DATA
-    Array[File] data =    glob("/cromwell_root/data/${prefix}*")
+    Array[File] data =    glob("./data/${prefix}*")
     #DOCUMENTATION
-    Array[File] doc =    glob("/cromwell_root/documentation/${prefix}*")
+    Array[File] doc =    glob("./documentation/${prefix}*")
   }
 }
 
@@ -158,7 +157,7 @@ task kinship{
 
   String? final_docker = if defined(kinship_docker) then kinship_docker else docker
   command {
-    python3.7  /scripts/ped.py \
+    python3  /scripts/ped.py \
     --bed ~{bed_file} \
     --out-path . \
     --prefix ~{prefix} \
@@ -169,6 +168,7 @@ task kinship{
     ls ./data/
     
   }
+  
   
   runtime {
     docker: "~{final_docker}"
@@ -181,12 +181,12 @@ task kinship{
   }
   
   output {
-    File readme = "/cromwell_root/~{prefix}_kinship_readme"
+    File readme = "./~{prefix}_kinship_readme"
     
     # DATA
-    Array[File] data  = glob("/cromwell_root/data/~{prefix}*")	
+    Array[File] data  = glob("./data/~{prefix}*")	
     #DOCUMENTATION
-    Array[File] doc = glob("/cromwell_root/documentation/~{prefix}*")
+    Array[File] doc = glob("./documentation/~{prefix}*")
 
     File bed = "./data/${prefix}_kinship.bed"
     File fam = "./data/${prefix}_kinship.fam"
@@ -248,8 +248,6 @@ task chrom_convert {
     File cFile
     String pargs
     File variants
-
-    
     Int mem
     Int cpu   
     String docker
@@ -331,7 +329,7 @@ task prune_panel {
     --target ~{target} \
     --pargs ~{pargs} \
     --release \
-    --out-path "/cromwell_root/" \ 
+    --out-path . \ 
   }
   
   runtime {
@@ -345,9 +343,9 @@ task prune_panel {
   }
   
   output {
-    File readme  = "/cromwell_root/~{prefix}_prune_readme"
-    File  snplist = "/cromwell_root/data/~{prefix}.prune.in"
-    File log = "/cromwell_root/documentation/~{prefix}.prune.log"
+    File readme  = "~{prefix}_prune_readme"
+    File  snplist = "./data/~{prefix}.prune.in"
+    File log = "./documentation/~{prefix}.prune.log"
 
   }
 }
