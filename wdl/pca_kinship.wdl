@@ -97,8 +97,8 @@ task pca {
     Int cpu
   }
     
-  Int disk_size =   ceil(size(bed_file,"GB"))*6 + ceil(size(tg_bed,"GB")) + 100
-  Int mem = ceil(size(bed_file,"GB"))*3 + 10
+  Int disk_size =   ceil(size(bed_file,"GB"))*6 + ceil(size(tg_bed,"GB")) + 150
+  Int mem = ceil(size(bed_file,"GB"))*4 + 10
   
   String out_file = prefix + "_output.log"
 
@@ -123,8 +123,8 @@ task pca {
   runtime {
     docker: "~{final_docker}"
     cpu: "~{cpu}"
-    disks:   "local-disk ~{disk_size} HDD"
-    bootDiskSizeGb: 20
+    disks:   "local-disk ~{disk_size} SSD"
+    bootDiskSizeGb: 50
     memory: "~{mem} GB"
     zones: "europe-west1-b europe-west1-c europe-west1-d"
     preemptible: 0
